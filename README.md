@@ -1,6 +1,8 @@
 # AID - ASCII/Invisible Character Detection Tool
 
-A powerful tool for detecting invisible Unicode characters in files, designed to identify potential ASCII smuggling attempts, hidden data encoding, and suspicious Unicode usage patterns.
+This tool was created with OpenAI Codex and Claude Code.
+
+A tool for detecting invisible Unicode characters in files, designed to identify potential ASCII smuggling attempts, hidden data encoding, and suspicious Unicode usage patterns.
 
 ## Features
 
@@ -185,14 +187,14 @@ cat report.json | jq '.file_assessments[] | select(.suspicion_level == "critical
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
 
+## Tool for tests
+https://embracethered.com/blog/ascii-smuggler.com
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Author
-
-Created by [@wunderwuzzi23](https://github.com/wunderwuzzi23) for detecting invisible Unicode characters and potential ASCII smuggling attacks.
-
 ## Acknowledgments
 
 Inspired by the need to detect sophisticated Unicode-based attacks and data hiding techniques.
+
