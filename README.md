@@ -9,7 +9,6 @@ A tool for detecting invisible Unicode characters in files, designed to identify
 - 🔍 **Comprehensive Detection**: Scans for Unicode tags, zero-width characters, directional marks, and variation selectors
 - 🎯 **Smart Analysis**: Automatically groups consecutive characters and assesses suspicion levels
 - 📊 **Multiple Output Formats**: CSV (default), JSON, and human-readable text reports
-- ⚡ **Streaming Output**: Low-memory scanning with real-time CSV writing for large directories
 - 🔢 **Unicode Tag Decoding**: Automatically decodes Unicode tag sequences to ASCII
 - 📈 **Compact Structured Reports**: One line/object per file with counts, char types, longest runs, and notes
 - 🚀 **Fast Scanning**: Skips binary files and excluded directories (configurable)
@@ -45,8 +44,9 @@ chmod +x aid
 ./aid --target ./my-project --output report.json --format json
 ./aid --target ./my-project --output report.txt --format text
 
-# Stream to stdout for piping
-./aid --target ./my-project --stream | grep "critical"
+# Save CSV and filter critical entries
+./aid --target ./my-project --output report.csv
+grep ",critical," report.csv
 ```
 
 ### Command Line Options
@@ -56,7 +56,6 @@ chmod +x aid
 --output PATH          Output report file path (default: ./aid-report.<format>)
 --format FORMAT        Output format: csv (default), json, or text
 --verbose              Show progress while scanning
---stream               Print report to stdout instead of file
 --consecutive-threshold N  Escalate risk if there are N consecutive invisible code points (default: 10)
 --include-cc           Also scan for classic control chars (Cc), excluding TAB/LF/CR
 --include-confusable-spaces  Also scan for confusable/suspicious spaces and fillers (e.g. U+00A0 NBSP)
@@ -193,18 +192,6 @@ EXCLUDED_DIRS = [
 
 By default, only `.git` is excluded. Hidden directories like `.curated` are scanned.
 
-## Real-Time Monitoring
-
-CSV format uses streaming output, so you can monitor scans in real-time:
-
-```bash
-# In one terminal
-./aid --target /large/directory --output scan.csv --verbose
-
-# In another terminal
-tail -f scan.csv
-```
-
 ## Use Cases
 
 - **Security Auditing**: Detect ASCII smuggling attempts in code repositories
@@ -221,11 +208,6 @@ tail -f scan.csv
 grep ",critical," report.csv
 ```
 
-### Check for Unicode Tags
-```bash
-./aid --target ./project --stream | grep "UNICODE TAGS"
-```
-
 ### JSON Output for Programmatic Use
 ```bash
 ./aid --target ./project --output report.json --format json
@@ -238,7 +220,7 @@ cat report.json | jq '.files[] | select(.suspicion_level == "critical")'
 2. **Skips binary files** automatically using MIME type and null-byte detection
 3. **Groups consecutive** invisible characters for better analysis
 4. **Decodes Unicode tags** to reveal hidden ASCII messages
-5. **Streams results** to CSV in real-time (low memory usage)
+5. **Generates report files** in CSV, JSON, or text format
 6. **Calculates suspicion levels** based on quantity and variety of invisible characters
 
 ## Contributing

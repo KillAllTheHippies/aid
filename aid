@@ -119,6 +119,24 @@ VARIATION_SELECTORS_BASIC = {chr(cp) for cp in range(0xFE00, 0xFE10)}
 SKIP_CC_DEFAULT = {'\t', '\n', '\r'}
 SKIP_ZS_DEFAULT = {' '}
 
+# MIME types that are textual even when not under text/*.
+TEXTUAL_MIME_TYPES = {
+    'application/json',
+    'application/ld+json',
+    'application/x-ndjson',
+    'application/xml',
+    'application/javascript',
+    'application/x-javascript',
+    'application/ecmascript',
+    'application/x-sh',
+    'application/x-httpd-php',
+    'application/x-yaml',
+    'application/yaml',
+    'application/toml',
+    'application/sql',
+    'image/svg+xml',
+}
+
 # Directories to exclude from scanning (add more as needed)
 EXCLUDED_DIRS = [
     '.git',
@@ -180,19 +198,24 @@ def is_binary_file(file_path):
     # First check by mime type
     mime_type, _ = mimetypes.guess_type(file_path)
     if mime_type:
-        if not mime_type.startswith('text/'):
-            return True
+        if (
+            not mime_type.startswith('text/')
+            and mime_type not in TEXTUAL_MIME_TYPES
+            and not mime_type.endswith('+json')
+            and not mime_type.endswith('+xml')
+        ):
+            return True, None
 
     # Check by reading a chunk
     try:
         with open(file_path, 'rb') as f:
             chunk = f.read(8192)
             if b'\x00' in chunk:  # Null bytes indicate binary
-                return True
-    except:
-        return True
+                return True, None
+    except OSError as e:
+        return True, str(e)
 
-    return False
+    return False, None
 
 
 def group_consecutive_chars(line_findings):
@@ -440,7 +463,8 @@ class DirectoryScanner:
         consecutive_threshold=10,
         include_cc=False,
         include_zs=False,
-        include_confusable_spaces=False
+        include_confusable_spaces=False,
+        excluded_paths=None
     ):
         self.target_dir = Path(target_dir).resolve()
         self.verbose = verbose
@@ -448,12 +472,15 @@ class DirectoryScanner:
         self.include_cc = include_cc
         self.include_zs = include_zs
         self.include_confusable_spaces = include_confusable_spaces
+        self.excluded_paths = {Path(p).resolve() for p in (excluded_paths or [])}
         self.stats = {
             'files_scanned': 0,
             'files_with_findings': 0,
             'total_invisible_chars': 0,
-            'skipped_binary': 0
+            'skipped_binary': 0,
+            'file_read_errors': 0
         }
+        self.read_errors = []
         self.results = {}
 
     def scan(self):
@@ -470,9 +497,20 @@ class DirectoryScanner:
 
             for file in files:
                 file_path = Path(root) / file
+                if file_path.resolve() in self.excluded_paths:
+                    continue
 
                 # Skip binary files
-                if is_binary_file(file_path):
+                is_binary, binary_check_error = is_binary_file(file_path)
+                if binary_check_error:
+                    self.stats['file_read_errors'] += 1
+                    self.read_errors.append((str(file_path.relative_to(self.target_dir)), binary_check_error))
+                    print(
+                        f"Warning: Could not read '{file_path.relative_to(self.target_dir)}' "
+                        f"during binary check: {binary_check_error}",
+                        file=sys.stderr
+                    )
+                if is_binary:
                     self.stats['skipped_binary'] += 1
                     continue
 
@@ -486,6 +524,12 @@ class DirectoryScanner:
                 )
 
                 if isinstance(findings, dict) and 'error' in findings:
+                    self.stats['file_read_errors'] += 1
+                    self.read_errors.append((str(file_path.relative_to(self.target_dir)), findings['error']))
+                    print(
+                        f"Warning: Could not scan '{file_path.relative_to(self.target_dir)}': {findings['error']}",
+                        file=sys.stderr
+                    )
                     continue
 
                 if findings:
@@ -518,7 +562,8 @@ def scan_directory(
     consecutive_threshold=10,
     include_cc=False,
     include_zs=False,
-    include_confusable_spaces=False
+    include_confusable_spaces=False,
+    excluded_paths=None
 ):
     """Scan directory and return all results (backward compatibility)."""
     scanner = DirectoryScanner(
@@ -527,7 +572,8 @@ def scan_directory(
         consecutive_threshold=consecutive_threshold,
         include_cc=include_cc,
         include_zs=include_zs,
-        include_confusable_spaces=include_confusable_spaces
+        include_confusable_spaces=include_confusable_spaces,
+        excluded_paths=excluded_paths
     )
     for _ in scanner.scan():
         pass  # Consume generator to populate results
@@ -602,6 +648,7 @@ def generate_json_report(results, stats, target_dir):
             'target_directory': str(target_dir),
             'files_scanned': stats['files_scanned'],
             'binary_files_skipped': stats['skipped_binary'],
+            'file_read_errors': stats.get('file_read_errors', 0),
             'files_with_findings': stats['files_with_findings'],
             'total_invisible_code_points': stats['total_invisible_chars']
         },
@@ -653,32 +700,19 @@ def generate_csv_report(results, stats, target_dir):
     return '\n'.join(output)
 
 
-def write_csv_row(f, file_path, data):
-    """Write a single compact CSV row for one file."""
-    suspicion = data['suspicion']
-    char_summary = summarize_chars(data['findings'])
-    char_list = '; '.join(f"{name} ({count})" for name, count in char_summary)
-
-    row = [
-        file_path,
-        str(data['file_size']),
-        suspicion['suspicion_level'],
-        str(suspicion['total_code_points']),
-        str(suspicion['unique_code_points']),
-        char_list,
-        str(suspicion.get('max_consecutive_code_points', 0)),
-        str(suspicion.get('max_consecutive_unicode_tags', 0)),
-        suspicion['reason']
-    ]
-
-    escaped_row = []
-    for field in row:
-        if ',' in field or '"' in field or '\n' in field:
-            field = '"' + field.replace('"', '""') + '"'
-        escaped_row.append(field)
-
-    f.write(','.join(escaped_row) + '\n')
-    f.flush()
+def validate_output_path(output_path):
+    """Validate output destination without creating directories."""
+    output_path = Path(output_path)
+    parent = output_path.parent
+    if not parent.exists():
+        print(f"Error: Output directory '{parent}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+    if not parent.is_dir():
+        print(f"Error: Output parent '{parent}' is not a directory.", file=sys.stderr)
+        sys.exit(1)
+    if output_path.exists() and output_path.is_dir():
+        print(f"Error: Output path '{output_path}' is a directory, expected a file.", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -704,11 +738,6 @@ def main():
         '--verbose',
         action='store_true',
         help='Show progress while scanning'
-    )
-    parser.add_argument(
-        '--stream',
-        action='store_true',
-        help='Print report to stdout instead of file'
     )
     parser.add_argument(
         '--consecutive-threshold',
@@ -743,73 +772,36 @@ def main():
         print(f"Error: Target '{target_dir}' is not a directory.", file=sys.stderr)
         sys.exit(1)
 
+    if not args.output:
+        extension_map = {'csv': 'csv', 'json': 'json', 'text': 'txt'}
+        args.output = f"aid-report.{extension_map[args.format]}"
+    validate_output_path(args.output)
+
     if not args.verbose:
         print(f"Scanning {target_dir}...")
 
-    if not args.stream and not args.output:
-        extension_map = {'csv': 'csv', 'json': 'json', 'text': 'txt'}
-        args.output = f"aid-report.{extension_map[args.format]}"
+    results, stats = scan_directory(
+        target_dir,
+        verbose=args.verbose,
+        consecutive_threshold=args.consecutive_threshold,
+        include_cc=args.include_cc,
+        include_zs=args.include_zs,
+        include_confusable_spaces=args.include_confusable_spaces,
+        excluded_paths=[args.output]
+    )
 
-    # Track if we're using streaming mode
-    streaming_mode = not args.stream and args.format == 'csv'
+    if args.verbose:
+        print("\r" + " " * 80 + "\r", end='', file=sys.stderr)  # Clear progress line
 
-    # Streaming mode - write to file incrementally (CSV only for now)
-    if streaming_mode:
-        # Open file for streaming CSV output
-        output_path = Path(args.output)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            # Write CSV header
-            header = [
-                'file_path', 'file_size_bytes', 'suspicion_level',
-                'total_invisible_code_points', 'unique_invisible_code_points',
-                'invisible_chars', 'longest_consecutive_run',
-                'longest_unicode_tag_run', 'notes'
-            ]
-            f.write(','.join(header) + '\n')
-            f.flush()
+    print(f"Generating {args.format} report...")
 
-            # Stream results as they're found
-            scanner = DirectoryScanner(
-                target_dir,
-                verbose=args.verbose,
-                consecutive_threshold=args.consecutive_threshold,
-                include_cc=args.include_cc,
-                include_zs=args.include_zs,
-                include_confusable_spaces=args.include_confusable_spaces
-            )
-            for result in scanner.scan():
-                write_csv_row(f, result['file_path'], result)
-
-        results = scanner.results
-        stats = scanner.stats
-
-        if args.verbose:
-            print("\r" + " " * 80 + "\r", end='', file=sys.stderr)  # Clear progress line
-
-    else:
-        # Buffer mode - for --stream or non-CSV formats
-        results, stats = scan_directory(
-            target_dir,
-            verbose=args.verbose,
-            consecutive_threshold=args.consecutive_threshold,
-            include_cc=args.include_cc,
-            include_zs=args.include_zs,
-            include_confusable_spaces=args.include_confusable_spaces
-        )
-
-        if args.verbose:
-            print("\r" + " " * 80 + "\r", end='', file=sys.stderr)  # Clear progress line
-
-        if not args.stream:
-            print(f"Generating {args.format} report...")
-
-        # Generate report in requested format
-        if args.format == 'json':
-            report = generate_json_report(results, stats, target_dir)
-        elif args.format == 'csv':
-            report = generate_csv_report(results, stats, target_dir)
-        else:  # text
-            report = generate_report(results, stats, target_dir)
+    # Generate report in requested format
+    if args.format == 'json':
+        report = generate_json_report(results, stats, target_dir)
+    elif args.format == 'csv':
+        report = generate_csv_report(results, stats, target_dir)
+    else:  # text
+        report = generate_report(results, stats, target_dir)
 
     # Calculate suspicion level breakdown
     suspicion_counts = {'info': 0, 'low': 0, 'high': 0, 'critical': 0}
@@ -859,55 +851,42 @@ def main():
                         else:
                             category_counts['Other Invisible'] += 1
 
-    # Write report or stream to stdout (only if not already written in streaming mode)
-    if not streaming_mode:
-        if args.stream:
-            # Print to stdout
-            try:
-                print(report)
-            except BrokenPipeError:
-                # Allow piping to commands like `head` without a traceback.
-                return
-        else:
-            # Write to file
-            output_path = Path(args.output)
-            output_path.write_text(report, encoding='utf-8')
+    output_path = Path(args.output)
+    output_path.write_text(report, encoding='utf-8')
 
     # Show summary stats
-    if not args.stream:
-        print(f"  Files scanned: {stats['files_scanned']}")
-        if stats['files_with_findings'] > 0:
-            print(f"  ⚠ Files with findings: {stats['files_with_findings']}")
-            if suspicion_counts['info'] > 0:
-                print(f"    🔵 Info: {suspicion_counts['info']}")
-            if suspicion_counts['low'] > 0:
-                print(f"    🟢 Low: {suspicion_counts['low']}")
-            if suspicion_counts['high'] > 0:
-                print(f"    🟠 High: {suspicion_counts['high']}")
-            if suspicion_counts['critical'] > 0:
-                print(f"    🔴 Critical: {suspicion_counts['critical']}")
-            print(f"  ⚠ Total invisible code points: {stats['total_invisible_chars']}")
+    print(f"  Files scanned: {stats['files_scanned']}")
+    if stats.get('file_read_errors', 0) > 0:
+        print(f"  ⚠ File read errors: {stats['file_read_errors']}")
+    if stats['files_with_findings'] > 0:
+        print(f"  ⚠ Files with findings: {stats['files_with_findings']}")
+        if suspicion_counts['info'] > 0:
+            print(f"    🔵 Info: {suspicion_counts['info']}")
+        if suspicion_counts['low'] > 0:
+            print(f"    🟢 Low: {suspicion_counts['low']}")
+        if suspicion_counts['high'] > 0:
+            print(f"    🟠 High: {suspicion_counts['high']}")
+        if suspicion_counts['critical'] > 0:
+            print(f"    🔴 Critical: {suspicion_counts['critical']}")
+        print(f"  ⚠ Total invisible code points: {stats['total_invisible_chars']}")
 
-            # Show category breakdown
-            print(f"  📊 By category:")
-            for category_name, count in category_counts.items():
-                if count > 0:
-                    print(f"    {category_name}: {count}")
-            print(f"  ℹ Consecutive threshold: {args.consecutive_threshold}")
-            if args.include_cc:
-                print(f"  ℹ Extra scan enabled: Cc control chars (excluding TAB/LF/CR)")
-            if args.include_zs:
-                print(f"  ℹ Extra scan enabled: Zs space separators (excluding U+0020 SPACE)")
-            if args.include_confusable_spaces:
-                print(f"  ℹ Extra scan enabled: confusable/suspicious spaces and fillers")
-            print(f"  ℹ Reminder: Manually inspect flagged files to verify intent/context.")
-        else:
-            print(f"  ✓ No invisible code points found")
+        # Show category breakdown
+        print(f"  📊 By category:")
+        for category_name, count in category_counts.items():
+            if count > 0:
+                print(f"    {category_name}: {count}")
+        print(f"  ℹ Consecutive threshold: {args.consecutive_threshold}")
+        if args.include_cc:
+            print(f"  ℹ Extra scan enabled: Cc control chars (excluding TAB/LF/CR)")
+        if args.include_zs:
+            print(f"  ℹ Extra scan enabled: Zs space separators (excluding U+0020 SPACE)")
+        if args.include_confusable_spaces:
+            print(f"  ℹ Extra scan enabled: confusable/suspicious spaces and fillers")
+        print(f"  ℹ Reminder: Manually inspect flagged files to verify intent/context.")
+    else:
+        print(f"  ✓ No invisible code points found")
 
-        if streaming_mode:
-            print(f"✓ Report written to {output_path}")
-        else:
-            print(f"✓ Report written to {Path(args.output)}")
+    print(f"✓ Report written to {output_path}")
 
 
 if __name__ == '__main__':
