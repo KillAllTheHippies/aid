@@ -56,7 +56,6 @@ grep ",critical," report.csv
 --output PATH          Output report file path (default: ./aid-report.<format>)
 --format FORMAT        Output format: csv (default), json, or text
 --verbose              Show progress while scanning
---consecutive-threshold N  Escalate risk if there are N consecutive invisible code points (default: 10)
 --include-cc           Also scan for classic control chars (Cc), excluding TAB/LF/CR
 --include-confusable-spaces  Also scan for confusable/suspicious spaces and fillers (e.g. U+00A0 NBSP)
 --include-zs           Also scan for Unicode space separators (Zs), excluding ASCII space U+0020
@@ -68,12 +67,18 @@ grep ",critical," report.csv
 
 AID automatically assesses the severity of findings:
 
-- 🔵 **INFO** (<10 code points): Few invisible characters, likely accidental
-- 🟢 **LOW** (10-49 code points): Some invisible characters, worth reviewing
-- 🟠 **HIGH** (50-99 code points): Many invisible characters, suspicious pattern
-- 🔴 **CRITICAL** (≥100 code points): Excessive characters, likely malicious/smuggling
+- 🔵 **INFO**: `longest_consecutive_run < 10` and `total_invisible_code_points < 10`
+- 🟡 **MEDIUM**: `longest_consecutive_run < 10` and `total_invisible_code_points >= 10`
+- 🟠 **HIGH**: `10 <= longest_consecutive_run < 40`
+- 🔴 **CRITICAL**: `longest_consecutive_run >= 40`
 
-Additionally, AID escalates risk when it detects long consecutive runs of invisible characters, and it flags when that run is specifically a Unicode tag sequence. Configure this via `--consecutive-threshold`.
+Classification is evaluated in this order:
+1. If `longest_consecutive_run >= 40`, severity is `critical`.
+2. Else if `longest_consecutive_run >= 10`, severity is `high`.
+3. Else if `total_invisible_code_points < 10`, severity is `info`.
+4. Else severity is `medium`.
+
+This means only long consecutive runs can produce `high` or `critical`; sparse distributions are capped at `medium`.
 
 ### CSV Output Format (Compact)
 
@@ -84,7 +89,8 @@ file_path,file_size_bytes,suspicion_level,total_invisible_code_points,unique_inv
 **Key Columns:**
 - `invisible_chars`: Character names with counts per file
 - `longest_consecutive_run`: Largest consecutive run of invisible code points in the file
-- `notes`: Short assessment text
+- `longest_unicode_tag_run`: Largest consecutive run containing only Unicode Tag code points
+- `notes`: Decoded Unicode Tag payload text(s), e.g. `'hidden text'` (empty when no Unicode Tag runs are found)
 
 ### Example Output
 

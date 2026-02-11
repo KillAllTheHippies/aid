@@ -118,6 +118,8 @@ SPACE_LIKE_CHARS = {'\u00A0', '\u00AD', '\u2000', '\u2001', '\u2002', '\u2003', 
 VARIATION_SELECTORS_BASIC = {chr(cp) for cp in range(0xFE00, 0xFE10)}
 SKIP_CC_DEFAULT = {'\t', '\n', '\r'}
 SKIP_ZS_DEFAULT = {' '}
+HIGH_CONSECUTIVE_RUN_THRESHOLD = 10
+CRITICAL_CONSECUTIVE_RUN_THRESHOLD = 40
 
 # MIME types that are textual even when not under text/*.
 TEXTUAL_MIME_TYPES = {
@@ -388,7 +390,7 @@ def get_context_display(line, char_groups, context_chars=2, consecutive_threshol
     return '\n'.join(result)
 
 
-def calculate_suspicion_level(findings, consecutive_threshold=10):
+def calculate_suspicion_level(findings):
     """
     Calculate suspicion level based on invisible code points found.
 
@@ -397,7 +399,7 @@ def calculate_suspicion_level(findings, consecutive_threshold=10):
     - unique_code_points: count of unique invisible characters
     - max_consecutive_code_points: largest consecutive run of invisible code points
     - max_consecutive_unicode_tags: largest consecutive run consisting only of Unicode tags
-    - suspicion_level: info, low, high, or critical
+    - suspicion_level: info, medium, high, or critical
     - reason: explanation of the assessment
     """
     # Count total code points
@@ -417,38 +419,28 @@ def calculate_suspicion_level(findings, consecutive_threshold=10):
 
     unique_code_points = len(unique_chars)
 
-    # Determine suspicion level
-    if total_code_points < 10:
-        level = "info"
-        reason = "Few code points"
-    elif total_code_points < 50:
-        level = "low"
-        reason = "Some code points"
-    elif total_code_points < 100:
-        level = "high"
-        reason = "Many code points"
-    else:
+    # Severity is run-driven:
+    # - critical: very long consecutive run (>= 40)
+    # - high: long consecutive run (>= 10)
+    # - sparse findings are capped at medium regardless of total volume.
+    if max_consecutive_code_points >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD:
         level = "critical"
-        reason = "Excessive code points"
-
-    # Escalate based on long consecutive runs of invisible code points.
-    # Unicode-tag-only runs are additionally highlighted because they are
-    # commonly used for hidden payload encoding.
-    if max_consecutive_code_points >= consecutive_threshold:
-        if level == "info":
-            level = "low"
-        reason = f"Long consecutive invisible run ({max_consecutive_code_points} code points)"
-        if max_consecutive_unicode_tags >= consecutive_threshold:
-            if level in ("info", "low"):
-                level = "high"
-            reason += f"; includes Unicode tag run ({max_consecutive_unicode_tags} tags)"
+        reason = f"Very long consecutive invisible run ({max_consecutive_code_points})"
+    elif max_consecutive_code_points >= HIGH_CONSECUTIVE_RUN_THRESHOLD:
+        level = "high"
+        reason = f"Long consecutive invisible run ({max_consecutive_code_points})"
+    elif total_code_points < 10:
+        level = "info"
+        reason = "Sparse and low volume"
+    else:
+        level = "medium"
+        reason = "Sparse distribution (severity capped at medium)"
 
     return {
         'total_code_points': total_code_points,
         'unique_code_points': unique_code_points,
         'max_consecutive_code_points': max_consecutive_code_points,
         'max_consecutive_unicode_tags': max_consecutive_unicode_tags,
-        'consecutive_threshold': consecutive_threshold,
         'suspicion_level': level,
         'reason': reason
     }
@@ -460,7 +452,6 @@ class DirectoryScanner:
         self,
         target_dir,
         verbose=False,
-        consecutive_threshold=10,
         include_cc=False,
         include_zs=False,
         include_confusable_spaces=False,
@@ -468,7 +459,6 @@ class DirectoryScanner:
     ):
         self.target_dir = Path(target_dir).resolve()
         self.verbose = verbose
-        self.consecutive_threshold = consecutive_threshold
         self.include_cc = include_cc
         self.include_zs = include_zs
         self.include_confusable_spaces = include_confusable_spaces
@@ -542,7 +532,7 @@ class DirectoryScanner:
                     file_size = file_path.stat().st_size
 
                     # Calculate suspicion level
-                    suspicion = calculate_suspicion_level(findings, consecutive_threshold=self.consecutive_threshold)
+                    suspicion = calculate_suspicion_level(findings)
 
                     result = {
                         'file_path': str(file_path.relative_to(self.target_dir)),
@@ -559,7 +549,6 @@ class DirectoryScanner:
 def scan_directory(
     target_dir,
     verbose=False,
-    consecutive_threshold=10,
     include_cc=False,
     include_zs=False,
     include_confusable_spaces=False,
@@ -569,7 +558,6 @@ def scan_directory(
     scanner = DirectoryScanner(
         target_dir,
         verbose,
-        consecutive_threshold=consecutive_threshold,
         include_cc=include_cc,
         include_zs=include_zs,
         include_confusable_spaces=include_confusable_spaces,
@@ -590,6 +578,42 @@ def summarize_chars(findings):
     return sorted(counts.items(), key=lambda x: (-x[1], x[0]))
 
 
+def decode_unicode_tag_group(group):
+    """Decode a Unicode-tag-only group into its visible ASCII payload."""
+    decoded = []
+    for char_info in group:
+        code = ord(char_info['char'])
+        if 0xE0020 <= code <= 0xE007E:
+            decoded.append(chr(code - 0xE0000))
+    return ''.join(decoded)
+
+
+def summarize_unicode_tag_runs(findings, max_runs=5):
+    """Summarize Unicode tag runs as decoded payload entries."""
+    runs = []
+    seen = set()
+
+    for finding in findings:
+        for group in finding['char_groups']:
+            if not group or not all(c['type'] == 'tag' for c in group):
+                continue
+            decoded_payload = decode_unicode_tag_group(group)
+            if not decoded_payload:
+                continue
+            key = decoded_payload
+            if key in seen:
+                continue
+            seen.add(key)
+            safe_payload = decoded_payload.replace('\\', '\\\\').replace("'", "\\'")
+            runs.append(f"'{safe_payload}'")
+
+    if not runs:
+        return ''
+    if len(runs) > max_runs:
+        return '; '.join(runs[:max_runs]) + f"; +{len(runs) - max_runs} more"
+    return '; '.join(runs)
+
+
 def build_file_report_rows(results):
     """Build compact one-row-per-file report data."""
     rows = []
@@ -597,6 +621,7 @@ def build_file_report_rows(results):
         suspicion = data['suspicion']
         char_summary = summarize_chars(data['findings'])
         char_list = '; '.join(f"{name} ({count})" for name, count in char_summary)
+        tag_notes = summarize_unicode_tag_runs(data['findings'])
 
         rows.append({
             'file_path': file_path,
@@ -607,7 +632,7 @@ def build_file_report_rows(results):
             'invisible_chars': char_list,
             'longest_consecutive_run': suspicion.get('max_consecutive_code_points', 0),
             'longest_unicode_tag_run': suspicion.get('max_consecutive_unicode_tags', 0),
-            'notes': suspicion['reason']
+            'notes': tag_notes
         })
     return rows
 
@@ -740,12 +765,6 @@ def main():
         help='Show progress while scanning'
     )
     parser.add_argument(
-        '--consecutive-threshold',
-        type=int,
-        default=10,
-        help='Escalate risk if there are this many consecutive invisible code points (default: 10)'
-    )
-    parser.add_argument(
         '--include-cc',
         action='store_true',
         help='Also scan for classic control characters (Unicode category Cc; excludes TAB/LF/CR)'
@@ -783,7 +802,6 @@ def main():
     results, stats = scan_directory(
         target_dir,
         verbose=args.verbose,
-        consecutive_threshold=args.consecutive_threshold,
         include_cc=args.include_cc,
         include_zs=args.include_zs,
         include_confusable_spaces=args.include_confusable_spaces,
@@ -804,7 +822,7 @@ def main():
         report = generate_report(results, stats, target_dir)
 
     # Calculate suspicion level breakdown
-    suspicion_counts = {'info': 0, 'low': 0, 'high': 0, 'critical': 0}
+    suspicion_counts = {'info': 0, 'medium': 0, 'high': 0, 'critical': 0}
 
     # Calculate character category breakdown
     category_counts = {
@@ -862,8 +880,8 @@ def main():
         print(f"  ⚠ Files with findings: {stats['files_with_findings']}")
         if suspicion_counts['info'] > 0:
             print(f"    🔵 Info: {suspicion_counts['info']}")
-        if suspicion_counts['low'] > 0:
-            print(f"    🟢 Low: {suspicion_counts['low']}")
+        if suspicion_counts['medium'] > 0:
+            print(f"    🟡 Medium: {suspicion_counts['medium']}")
         if suspicion_counts['high'] > 0:
             print(f"    🟠 High: {suspicion_counts['high']}")
         if suspicion_counts['critical'] > 0:
@@ -875,7 +893,6 @@ def main():
         for category_name, count in category_counts.items():
             if count > 0:
                 print(f"    {category_name}: {count}")
-        print(f"  ℹ Consecutive threshold: {args.consecutive_threshold}")
         if args.include_cc:
             print(f"  ℹ Extra scan enabled: Cc control chars (excluding TAB/LF/CR)")
         if args.include_zs:
