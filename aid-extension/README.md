@@ -46,7 +46,9 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Auto-scan pages | Off | Scan every page automatically |
-| Detect confusable spaces | Off | NBSP, thin space, hangul filler, etc. |
+| Sequence length filter | 1-0 | Min/Max limits for consecutive run highlighting (0 = no max limit) |
+| Detect NO-BREAK SPACE | Off | Specifically isolate U+00A0 detection |
+| Detect confusable spaces | Off | Thin space, hangul filler, etc. (excludes NBSP if toggled separately) |
 | Detect control chars (Cc) | Off | Unicode Cc category (excludes TAB/LF/CR) |
 | Detect space separators (Zs) | Off | Unicode Zs category (excludes ASCII space) |
 
@@ -83,7 +85,8 @@ Output: `dist/aid-chrome.zip`, `dist/aid-firefox.xpi`, `dist/aid-edge.zip`
 - **Deprecated Format Controls** — U+206A–U+206F
 
 ### Optional (Settings)
-- **Confusable Spaces** — NBSP, soft hyphen, quads, thin/hair space, braille blank, hangul filler
+- **NO-BREAK SPACE** — U+00A0
+- **Confusable Spaces** — Soft hyphen, quads, thin/hair space, braille blank, hangul filler
 - **Control Characters (Cc)** — all Cc except TAB/LF/CR
 - **Space Separators (Zs)** — all Zs except ASCII space
 
