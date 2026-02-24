@@ -60,9 +60,8 @@
       </label>
       <div class="setting-input-block">
         <label class="setting-block-label">Character Filters (Include/Exclude)</label>
-        <div class="filter-chips-container" id="filter-chips"></div>
         <div class="search-filter-group">
-          <label class="search-filter-label">Search Filtering</label>
+          <label class="search-filter-label">Search Filtering (affects dropdown only)</label>
           <div class="search-filter-chips" id="search-filter-chips">
             <div class="search-filter-chip" data-category="invisible" data-state="include">
               <span class="sf-toggle">+</span><span class="sf-name">Invisible</span>
@@ -80,12 +79,13 @@
               <span class="sf-toggle">+</span><span class="sf-name">Control Chars</span>
             </div>
           </div>
+          <div class="filter-input-wrapper">
+            <input type="text" id="filter-input" class="setting-text-input"
+              placeholder="Arrow keys or type, click + or - to toggle">
+            <div class="filter-dropdown" id="filter-dropdown"></div>
+          </div>
         </div>
-        <div class="filter-input-wrapper">
-          <input type="text" id="filter-input" class="setting-text-input"
-            placeholder="Type name or U+XXXX to filter...">
-          <div class="filter-dropdown" id="filter-dropdown"></div>
-        </div>
+        <div class="filter-chips-container" id="filter-chips"></div>
       </div>
       <details class="setting-drawer" id="seq-length-drawer">
         <summary class="setting-drawer-label">Sequence length filter</summary>

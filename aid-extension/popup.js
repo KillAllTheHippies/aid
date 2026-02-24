@@ -244,6 +244,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderDropdown(getFilteredKnownChars(query));
     });
 
+    filterInput.addEventListener('click', () => {
+        if (!filterDropdown.classList.contains('show')) {
+            const query = filterInput.value.trim().toLowerCase();
+            renderDropdown(getFilteredKnownChars(query));
+        }
+    });
+
     filterInput.addEventListener('blur', () => {
         filterDropdown.classList.remove('show');
     });
