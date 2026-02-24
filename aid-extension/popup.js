@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optConfusable = document.getElementById('opt-confusable');
     const optCc = document.getElementById('opt-cc');
     const optZs = document.getElementById('opt-zs');
+    const optMinSeq = document.getElementById('opt-min-seq');
+    const optMaxSeq = document.getElementById('opt-max-seq');
 
     const EMOJI = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
@@ -30,6 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
     optZs.checked = settings.detectSpaceSeparators || false;
+    optMinSeq.value = settings.minSeqLength ?? 1;
+    optMaxSeq.value = settings.maxSeqLength ?? 0;
 
     // ─── Settings Panel ─────────────────────────────────────────────
 
@@ -43,6 +47,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
             detectSpaceSeparators: optZs.checked,
+            minSeqLength: Math.max(1, parseInt(optMinSeq.value, 10) || 1),
+            maxSeqLength: Math.max(0, parseInt(optMaxSeq.value, 10) || 0),
         };
 
         if (s.autoScan && !settings.autoScan) {
@@ -56,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     [optAutoScan, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
+    [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Scan Button ────────────────────────────────────────────────
 

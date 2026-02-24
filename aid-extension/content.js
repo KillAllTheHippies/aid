@@ -40,6 +40,7 @@
         }
 
         pageSuspicion = calculateSuspicion(allResults);
+
         applyHighlights();
         ensureTooltip();
 
@@ -296,6 +297,13 @@
 
             // Process groups right-to-left so splitText offsets stay valid
             const groups = groupConsecutive(findings)
+                .filter(g => {
+                    const minLen = settings.minSeqLength ?? 1;
+                    const maxLen = settings.maxSeqLength ?? 0;
+                    if (g.length < minLen) return false;
+                    if (maxLen > 0 && g.length > maxLen) return false;
+                    return true;
+                })
                 .sort((a, b) => b[0].charIndex - a[0].charIndex);
 
             for (const group of groups) {
@@ -526,7 +534,13 @@
             if (!(p.isContentEditable || p.closest('[contenteditable="true"], textarea, input, [role="textbox"], .cm-content, .CodeMirror, .monaco-editor')))
                 continue;
 
-            const groups = groupConsecutive(findings);
+            const groups = groupConsecutive(findings).filter(g => {
+                const minLen = settings.minSeqLength ?? 1;
+                const maxLen = settings.maxSeqLength ?? 0;
+                if (g.length < minLen) return false;
+                if (maxLen > 0 && g.length > maxLen) return false;
+                return true;
+            });
             for (const group of groups) {
                 const startIdx = group[0].charIndex;
                 const nodeId = `aid-${nodeIdx}-${startIdx}`;

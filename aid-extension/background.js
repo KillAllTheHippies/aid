@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS = {
     detectConfusableSpaces: false,
     detectControlChars: false,
     detectSpaceSeparators: false,
+    minSeqLength: 1,
+    maxSeqLength: 0,  // 0 = no limit
 };
 
 const BADGE_COLORS = {
