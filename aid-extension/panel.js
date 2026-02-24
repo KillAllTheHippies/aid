@@ -168,7 +168,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             page_suspicion: currentResults.suspicion,
             category_breakdown: currentResults.categoryBreakdown,
-            per_character_summary: [],
             detections: currentResults.detections.map(d => ({
                 node_id: d.nodeId, group_size: d.groupSize, severity: d.severity,
                 type: d.type, char_name: d.charName, code_points: d.codePoints,

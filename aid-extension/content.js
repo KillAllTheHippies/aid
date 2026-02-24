@@ -538,16 +538,6 @@
                 }
                 break;
             }
-
-            case 'toggleHighlights':
-                pauseObserver();
-                message.visible ? applyHighlights() : removeHighlights();
-                resumeObserver();
-                break;
-
-            case 'getResultsFromContent':
-                sendResponse({ results: buildSerializableResults() });
-                return true;
         }
     });
 
