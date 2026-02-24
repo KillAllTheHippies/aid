@@ -1,150 +1,115 @@
 /**
  * AID – ASCII Smuggling Detector
  * Content Script — Detection engine, highlighting, tooltips, inline expansion.
- * Injected on-demand via background.js or auto-scan.
+ * Injected on-demand via background.js or registered auto-scan.
  */
 
 (() => {
-    // Prevent double-injection
     if (window.__aidInjected) return;
     window.__aidInjected = true;
 
     // ─── State ──────────────────────────────────────────────────────────────
 
-    let allResults = [];       // Per-node detection results
+    let allResults = [];    // { textNode, findings[] }[]
     let pageSuspicion = null;  // Page-level suspicion object
-    let highlightSpans = [];   // References for cleanup
-    let tooltipEl = null;      // Shared tooltip element
-    let settings = {};         // Injected from background
+    let highlightSpans = [];    // Live references to injected <span.aid-hl>
+    let tooltipEl = null;  // Shared tooltip element
+    let settings = {};    // User settings from background
     let mutationObserver = null;
-    let isHighlighting = false; // Guard: prevent observer re-fire during DOM edits
-    let isScanning = false;     // Guard: prevent concurrent scans
+    let isHighlighting = false; // Guard: suppress observer during DOM edits
+    let isScanning = false; // Guard: prevent concurrent scans
 
     // ─── Scan Entry Point ──────────────────────────────────────────────────
 
     function scanPage(opts) {
-        // Prevent concurrent scans
         if (isScanning) return;
         isScanning = true;
-
         settings = opts || {};
 
-        // Disconnect observer during scan+highlight to prevent re-triggering
         pauseObserver();
-
-        // Remove previous highlights first (restores original DOM)
         removeHighlights();
-
         allResults = [];
+
+        // Collect visible text nodes
+        const textNodes = collectTextNodes();
+
+        // Scan each text node for invisible characters
+        for (const tn of textNodes) {
+            const findings = scanTextNode(tn);
+            if (findings.length) allResults.push({ textNode: tn, findings });
+        }
+
+        pageSuspicion = calculateSuspicion(allResults);
+        applyHighlights();
+        ensureTooltip();
+
+        // Notify background (badge + cached results)
+        chrome.runtime.sendMessage({
+            action: 'scanComplete',
+            suspicion: pageSuspicion,
+            totalDetections: pageSuspicion.totalCodePoints,
+        });
+        chrome.runtime.sendMessage({
+            action: 'scanResults',
+            results: buildSerializableResults(),
+        });
+
+        resumeObserver();
+        isScanning = false;
+    }
+
+    // ─── Text Node Collection ─────────────────────────────────────────────
+
+    function collectTextNodes() {
+        const nodes = [];
 
         const walker = document.createTreeWalker(
             document.body,
             NodeFilter.SHOW_TEXT,
             {
                 acceptNode(node) {
-                    // Skip our own injected elements
-                    if (node.parentElement?.closest('.aid-tooltip, .aid-marker, .aid-hl')) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-                    // Skip text inside elements hidden by CSS (e.g. responsive clones)
                     const el = node.parentElement;
-                    if (el && el.getClientRects().length === 0) {
+                    if (!el) return NodeFilter.FILTER_REJECT;
+                    // Skip our own injected elements
+                    if (el.closest('.aid-tooltip, .aid-marker, .aid-hl'))
                         return NodeFilter.FILTER_REJECT;
-                    }
+                    // Skip elements hidden by CSS (responsive clones, etc.)
+                    if (el.getClientRects().length === 0)
+                        return NodeFilter.FILTER_REJECT;
                     return NodeFilter.FILTER_ACCEPT;
-                }
+                },
             }
         );
 
-        const textNodes = [];
-        let node;
-        while ((node = walker.nextNode())) {
-            textNodes.push(node);
-        }
+        let n;
+        while ((n = walker.nextNode())) nodes.push(n);
 
-        // Also walk open shadow roots
-        walkShadowRoots(document.body, textNodes);
+        // Also walk open shadow roots and same-origin iframes
+        walkShadowRoots(document.body, nodes);
+        walkIframes(nodes);
 
-        // Also walk same-origin iframes
-        walkIframes(textNodes);
-
-        // Scan each text node
-        for (const textNode of textNodes) {
-            const findings = scanTextNode(textNode);
-            if (findings.length > 0) {
-                allResults.push({ textNode, findings });
-            }
-        }
-
-        // Calculate page-level suspicion
-        pageSuspicion = calculateSuspicion(allResults);
-
-        // Apply highlights (observer is paused, so this won't retrigger)
-        applyHighlights();
-
-        // Setup tooltip
-        ensureTooltip();
-
-        // Notify background
-        const totalDetections = pageSuspicion.totalCodePoints;
-        chrome.runtime.sendMessage({
-            action: 'scanComplete',
-            suspicion: pageSuspicion,
-            totalDetections,
-        });
-
-        // Send full results for panel
-        chrome.runtime.sendMessage({
-            action: 'scanResults',
-            results: buildSerializableResults(),
-        });
-
-        // Resume observer AFTER all DOM changes are done
-        resumeObserver();
-
-        isScanning = false;
+        return nodes;
     }
 
-    // ─── Shadow DOM Traversal ──────────────────────────────────────────────
-
-    function walkShadowRoots(root, textNodes) {
-        const elements = root.querySelectorAll('*');
-        for (const el of elements) {
-            if (el.shadowRoot) {
-                const walker = document.createTreeWalker(
-                    el.shadowRoot,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                );
-                let node;
-                while ((node = walker.nextNode())) {
-                    textNodes.push(node);
-                }
-                walkShadowRoots(el.shadowRoot, textNodes);
-            }
+    function walkShadowRoots(root, out) {
+        for (const el of root.querySelectorAll('*')) {
+            if (!el.shadowRoot) continue;
+            const w = document.createTreeWalker(el.shadowRoot, NodeFilter.SHOW_TEXT, null);
+            let n;
+            while ((n = w.nextNode())) out.push(n);
+            walkShadowRoots(el.shadowRoot, out);
         }
     }
 
-    // ─── Same-Origin Iframe Traversal ─────────────────────────────────────
-
-    function walkIframes(textNodes) {
-        const iframes = document.querySelectorAll('iframe');
-        for (const iframe of iframes) {
+    function walkIframes(out) {
+        for (const iframe of document.querySelectorAll('iframe')) {
             try {
                 const doc = iframe.contentDocument;
-                if (!doc || !doc.body) continue;
-                const walker = doc.createTreeWalker(
-                    doc.body,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                );
-                let node;
-                while ((node = walker.nextNode())) {
-                    textNodes.push(node);
-                }
-            } catch (e) {
-                // Cross-origin — skip silently
-            }
+                if (!doc?.body) continue;
+                const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+                let n;
+                while ((n = w.nextNode())) out.push(n);
+            } catch { /* cross-origin — skip */ }
         }
     }
 
@@ -159,102 +124,58 @@
         for (let i = 0; i < text.length; i++) {
             const cp = text.codePointAt(i);
             const char = String.fromCodePoint(cp);
-
-            // How many UTF-16 code units does this char consume?
             const charLen = cp > 0xFFFF ? 2 : 1;
+            if (charLen === 2) i++; // skip trailing surrogate
 
-            // Skip trailing surrogate for supplementary plane chars
-            if (charLen === 2) i++;
+            // The charIndex always points to the FIRST code unit of this character
+            const charIndex = charLen === 2 ? i - 1 : i;
 
             // 1. Primary invisible chars
             if (INVISIBLE_CHARS[char]) {
-                findings.push({
-                    char, name: INVISIBLE_CHARS[char],
-                    charIndex: charLen === 2 ? i - 1 : i,
-                    charLen,
-                    type: 'invisible',
-                    decoded: null,
-                });
+                findings.push({ char, name: INVISIBLE_CHARS[char], charIndex, charLen, type: 'invisible', decoded: null });
                 continue;
             }
-
             // 2. Confusable spaces (optional)
             if (settings.detectConfusableSpaces && CONFUSABLE_SPACE_CHARS[char]) {
-                findings.push({
-                    char, name: CONFUSABLE_SPACE_CHARS[char],
-                    charIndex: i,
-                    charLen,
-                    type: 'space_like',
-                    decoded: null,
-                });
+                findings.push({ char, name: CONFUSABLE_SPACE_CHARS[char], charIndex, charLen, type: 'space_like', decoded: null });
                 continue;
             }
-
             // 3. Variation Selector Supplements (VS17–VS256)
             if (isVariationSelectorSupplement(cp)) {
-                findings.push({
-                    char, name: variationSelectorName(cp),
-                    charIndex: i - 1, // i was already incremented past surrogate
-                    charLen,
-                    type: 'invisible',
-                    decoded: null,
-                });
+                findings.push({ char, name: variationSelectorName(cp), charIndex, charLen, type: 'invisible', decoded: null });
                 continue;
             }
-
-            // 4. Unicode Tags
+            // 4. Unicode Tags (U+E0001–U+E007F)
             if (isUnicodeTag(cp)) {
-                findings.push({
-                    char, name: 'UNICODE TAG',
-                    charIndex: i - 1,
-                    charLen,
-                    type: 'tag',
-                    decoded: decodeUnicodeTag(cp),
-                });
+                findings.push({ char, name: 'UNICODE TAG', charIndex, charLen, type: 'tag', decoded: decodeUnicodeTag(cp) });
                 continue;
             }
-
             // 5. Control chars (optional)
             if (settings.detectControlChars && isControlChar(char)) {
-                findings.push({
-                    char, name: controlCharName(char),
-                    charIndex: i,
-                    charLen,
-                    type: 'cc',
-                    decoded: null,
-                });
+                findings.push({ char, name: controlCharName(char), charIndex, charLen, type: 'cc', decoded: null });
                 continue;
             }
-
             // 6. Space separators (optional)
             if (settings.detectSpaceSeparators && isSpaceSeparator(char)) {
-                findings.push({
-                    char, name: zsCharName(char),
-                    charIndex: i,
-                    charLen,
-                    type: 'zs',
-                    decoded: null,
-                });
-                continue;
+                findings.push({ char, name: zsCharName(char), charIndex, charLen, type: 'zs', decoded: null });
             }
         }
 
         return findings;
     }
 
-    // ─── Grouping (port of group_consecutive_chars) ────────────────────────
-    // Fixed: accounts for surrogate pairs where charLen > 1
+    // ─── Grouping ──────────────────────────────────────────────────────────
+    // Groups consecutive findings, accounting for surrogate pairs (charLen > 1).
 
     function groupConsecutive(findings) {
         if (!findings.length) return [];
         const sorted = [...findings].sort((a, b) => a.charIndex - b.charIndex);
         const groups = [[sorted[0]]];
+
         for (let i = 1; i < sorted.length; i++) {
-            const last = groups[groups.length - 1];
-            const prev = last[last.length - 1];
-            // Characters are consecutive if next starts right after prev ends
+            const prev = groups.at(-1).at(-1);
             if (sorted[i].charIndex === prev.charIndex + prev.charLen) {
-                last.push(sorted[i]);
+                groups.at(-1).push(sorted[i]);
             } else {
                 groups.push([sorted[i]]);
             }
@@ -262,138 +183,105 @@
         return groups;
     }
 
-    // ─── Suspicion Calculation (page-level) ────────────────────────────────
+    // ─── Suspicion Calculation ─────────────────────────────────────────────
 
-    function calculateSuspicion(allNodeResults) {
+    function calculateSuspicion(results) {
         let totalCodePoints = 0;
         const uniqueChars = new Set();
-        let maxConsecutiveCodePoints = 0;
-        let maxConsecutiveUnicodeTags = 0;
+        let maxRun = 0;
+        let maxTagRun = 0;
 
-        for (const nodeResult of allNodeResults) {
-            const groups = groupConsecutive(nodeResult.findings);
-            for (const group of groups) {
+        for (const { findings } of results) {
+            for (const group of groupConsecutive(findings)) {
                 totalCodePoints += group.length;
-                maxConsecutiveCodePoints = Math.max(maxConsecutiveCodePoints, group.length);
-                if (group.every(c => c.type === 'tag')) {
-                    maxConsecutiveUnicodeTags = Math.max(maxConsecutiveUnicodeTags, group.length);
-                }
+                maxRun = Math.max(maxRun, group.length);
+                if (group.every(c => c.type === 'tag'))
+                    maxTagRun = Math.max(maxTagRun, group.length);
                 for (const c of group) uniqueChars.add(c.char);
             }
         }
 
         let level, reason;
-        if (maxConsecutiveCodePoints >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) {
-            level = 'critical';
-            reason = `Very long consecutive invisible run (${maxConsecutiveCodePoints})`;
-        } else if (maxConsecutiveCodePoints >= HIGH_CONSECUTIVE_RUN_THRESHOLD) {
-            level = 'high';
-            reason = `Long consecutive invisible run (${maxConsecutiveCodePoints})`;
-        } else if (totalCodePoints > SPARSE_HIGH_TOTAL_THRESHOLD) {
-            level = 'high';
-            reason = `Sparse but very large invisible volume (${totalCodePoints})`;
-        } else if (totalCodePoints < 10) {
-            level = 'info';
-            reason = 'Sparse and low volume';
-        } else {
-            level = 'medium';
-            reason = 'Sparse distribution (severity capped at medium)';
-        }
+        if (maxRun >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) { level = 'critical'; reason = `Very long consecutive run (${maxRun})`; }
+        else if (maxRun >= HIGH_CONSECUTIVE_RUN_THRESHOLD) { level = 'high'; reason = `Long consecutive run (${maxRun})`; }
+        else if (totalCodePoints > SPARSE_HIGH_TOTAL_THRESHOLD) { level = 'high'; reason = `Large invisible volume (${totalCodePoints})`; }
+        else if (totalCodePoints < 10) { level = 'info'; reason = 'Sparse and low volume'; }
+        else { level = 'medium'; reason = 'Sparse distribution'; }
 
         return {
-            totalCodePoints,
-            uniqueCodePoints: uniqueChars.size,
-            maxConsecutiveCodePoints,
-            maxConsecutiveUnicodeTags,
-            suspicionLevel: level,
-            reason,
+            totalCodePoints, uniqueCodePoints: uniqueChars.size,
+            maxConsecutiveCodePoints: maxRun, maxConsecutiveUnicodeTags: maxTagRun,
+            suspicionLevel: level, reason,
         };
     }
 
-    // ─── Summarization Helpers ─────────────────────────────────────────────
+    // ─── Decoding ──────────────────────────────────────────────────────────
 
-    function summarizeChars(allNodeResults) {
-        const counts = new Map();
-        for (const nodeResult of allNodeResults) {
-            for (const f of nodeResult.findings) {
-                counts.set(f.name, (counts.get(f.name) || 0) + 1);
-            }
-        }
-        return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    }
-
+    /** Decode Unicode Tag group → ASCII string. */
     function decodeTagGroup(group) {
         return group
-            .filter(c => {
-                const cp = c.char.codePointAt(0);
-                return cp >= 0xE0020 && cp <= 0xE007E;
-            })
+            .filter(c => { const p = c.char.codePointAt(0); return p >= 0xE0020 && p <= 0xE007E; })
             .map(c => String.fromCharCode(c.char.codePointAt(0) - 0xE0000))
             .join('');
     }
 
-    // Decode VS supplement group: VS-N encodes ASCII character (N-1)
+    /** Decode VS supplement group → ASCII string.  VS-N encodes ASCII char (N-1). */
     function decodeVSGroup(group) {
         return group
-            .filter(c => {
-                const cp = c.char.codePointAt(0);
-                return isVariationSelectorSupplement(cp);
-            })
+            .filter(c => isVariationSelectorSupplement(c.char.codePointAt(0)))
             .map(c => {
-                const cp = c.char.codePointAt(0);
-                const asciiCode = cp - 0xE0100 + 16; // VS-N → ASCII(N-1)
-                if (asciiCode >= 32 && asciiCode <= 126) {
-                    return String.fromCharCode(asciiCode);
-                }
-                return `[VS-${asciiCode + 1}]`;
+                const ascii = c.char.codePointAt(0) - 0xE0100 + 16;
+                return (ascii >= 32 && ascii <= 126) ? String.fromCharCode(ascii) : `[VS-${ascii + 1}]`;
             })
             .join('');
     }
 
-    // Try to decode any group to a readable hidden message
+    /** Try all known decodings; return decoded string or null. */
     function decodeGroup(group) {
-        // 1. Unicode Tags → ASCII
         if (group.every(c => c.type === 'tag')) {
-            const decoded = decodeTagGroup(group);
-            if (decoded) return decoded;
+            const d = decodeTagGroup(group);
+            if (d) return d;
         }
-        // 2. VS Supplements → ASCII
         if (group.some(c => isVariationSelectorSupplement(c.char.codePointAt(0)))) {
-            const decoded = decodeVSGroup(group);
-            if (decoded) return decoded;
+            const d = decodeVSGroup(group);
+            if (d) return d;
         }
-        // 3. No decodable message
         return null;
     }
 
-    function summarizeTagRuns(allNodeResults, maxRuns = 5) {
-        const runs = [];
-        const seen = new Set();
-        for (const nodeResult of allNodeResults) {
-            const groups = groupConsecutive(nodeResult.findings);
-            for (const group of groups) {
-                if (!group.every(c => c.type === 'tag')) continue;
-                const decoded = decodeTagGroup(group);
-                if (!decoded || seen.has(decoded)) continue;
-                seen.add(decoded);
-                runs.push(decoded);
-            }
-        }
-        if (runs.length > maxRuns) {
-            return runs.slice(0, maxRuns).map(r => `'${r}'`).join('; ') +
-                `; +${runs.length - maxRuns} more`;
-        }
-        return runs.map(r => `'${r}'`).join('; ');
+    // ─── Summarization Helpers ─────────────────────────────────────────────
+
+    function summarizeChars(results) {
+        const counts = new Map();
+        for (const { findings } of results)
+            for (const f of findings)
+                counts.set(f.name, (counts.get(f.name) || 0) + 1);
+        return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     }
 
-    function getCategoryBreakdown(allNodeResults) {
+    function summarizeTagRuns(results, max = 5) {
+        const runs = [], seen = new Set();
+        for (const { findings } of results) {
+            for (const g of groupConsecutive(findings)) {
+                if (!g.every(c => c.type === 'tag')) continue;
+                const d = decodeTagGroup(g);
+                if (!d || seen.has(d)) continue;
+                seen.add(d);
+                runs.push(d);
+            }
+        }
+        return runs.length > max
+            ? runs.slice(0, max).map(r => `'${r}'`).join('; ') + `; +${runs.length - max} more`
+            : runs.map(r => `'${r}'`).join('; ');
+    }
+
+    function getCategoryBreakdown(results) {
         const counts = {};
-        for (const nodeResult of allNodeResults) {
-            for (const f of nodeResult.findings) {
+        for (const { findings } of results)
+            for (const f of findings) {
                 const cat = classifyCategory(f);
                 counts[cat] = (counts[cat] || 0) + 1;
             }
-        }
         return counts;
     }
 
@@ -407,51 +295,30 @@
             const { textNode, findings } = allResults[nodeIdx];
             if (!textNode.parentNode) continue;
 
-            const groups = groupConsecutive(findings);
+            // Process groups right-to-left so splitText offsets stay valid
+            const groups = groupConsecutive(findings)
+                .sort((a, b) => b[0].charIndex - a[0].charIndex);
 
-            // Process groups in reverse order to maintain correct positions
-            const sortedGroups = [...groups].sort(
-                (a, b) => b[0].charIndex - a[0].charIndex
-            );
-
-            for (const group of sortedGroups) {
+            for (const group of groups) {
                 const startIdx = group[0].charIndex;
-                // End index = start of last char + its code-unit length
-                const endIdx = group[group.length - 1].charIndex + group[group.length - 1].charLen;
+                const endIdx = group.at(-1).charIndex + group.at(-1).charLen;
+                const decoded = decodeGroup(group);
+                const decodedText = decoded || (group.length === 1 ? group[0].name : `${group.length} invisible chars`);
 
-                // Determine severity for this group based on run length
-                let groupSeverity;
-                if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) {
-                    groupSeverity = 'critical';
-                } else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) {
-                    groupSeverity = 'high';
-                } else if (pageSuspicion) {
-                    groupSeverity = pageSuspicion.suspicionLevel;
-                } else {
-                    groupSeverity = 'info';
-                }
-
-                // Determine decoded text for inline expansion
-                let decodedText = decodeGroup(group);
-
-                // If no decodable message, show char name as fallback
-                if (!decodedText) {
-                    if (group.length === 1) {
-                        decodedText = group[0].name;
-                    } else {
-                        decodedText = `${group.length} invisible chars`;
-                    }
-                }
+                // Group severity
+                let severity;
+                if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) severity = 'critical';
+                else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) severity = 'high';
+                else severity = pageSuspicion?.suspicionLevel || 'info';
 
                 try {
                     if (!textNode.parentNode) continue;
-                    const text = textNode.textContent;
-                    if (startIdx >= text.length) continue;
+                    if (startIdx >= textNode.textContent.length) continue;
 
-                    // Create wrapper span
+                    // Build highlight wrapper
                     const span = document.createElement('span');
                     span.className = 'aid-hl';
-                    span.dataset.severity = groupSeverity;
+                    span.dataset.severity = severity;
                     span.dataset.decoded = decodedText;
                     span.dataset.nodeId = `aid-${nodeIdx}-${startIdx}`;
                     span.dataset.charCount = String(group.length);
@@ -460,41 +327,36 @@
                         : `${group[0].name} (+${group.length - 1} more)`;
                     span.dataset.codePoint = `U+${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
                     span.dataset.category = classifyCategory(group[0]);
-
-                    // Store tooltip data
-                    const hasMsg = decodeGroup(group) !== null;
                     span.dataset.tooltipData = JSON.stringify({
-                        severity: groupSeverity,
+                        severity,
                         charName: group.length === 1 ? group[0].name : `${group.length} invisible characters`,
                         codePoint: span.dataset.codePoint,
                         count: group.length,
                         category: span.dataset.category,
                         decoded: decodedText,
-                        hasDecodedMessage: hasMsg,
+                        hasDecodedMessage: decoded !== null,
                     });
 
-                    // Split text and wrap — ONE span per GROUP
+                    // Split text and wrap — one <span> per consecutive group
                     const afterNode = textNode.splitText(startIdx);
                     afterNode.splitText(endIdx - startIdx);
-
-                    // Wrap the middle portion (afterNode is now just the invisible chars)
                     span.appendChild(afterNode.cloneNode(true));
                     afterNode.parentNode.replaceChild(span, afterNode);
 
-                    // Add ONE subtle marker per group as a visible hover target
+                    // Visible marker (hover target + click-to-expand)
                     const marker = document.createElement('span');
                     marker.className = 'aid-marker';
                     marker.setAttribute('aria-hidden', 'true');
-                    const shortLabel = group.length > 1 ? `(${group.length})` : '(·)';
-                    marker.textContent = shortLabel;
-                    marker.dataset.collapsed = shortLabel;
+                    const label = group.length > 1 ? `(${group.length})` : '(·)';
+                    marker.textContent = label;
+                    marker.dataset.collapsed = label;
                     marker.dataset.expanded = `(${decodedText})`;
                     marker.dataset.isExpanded = 'false';
                     span.appendChild(marker);
 
                     highlightSpans.push(span);
                 } catch (e) {
-                    console.warn('AID: Could not highlight node:', e);
+                    console.warn('AID: highlight failed:', e);
                 }
             }
         }
@@ -506,13 +368,11 @@
         isHighlighting = true;
         for (const span of highlightSpans) {
             if (!span.parentNode) continue;
-            // Remove marker elements FIRST — they are our additions, not original content
+            // Delete our marker elements first
             span.querySelectorAll('.aid-marker').forEach(m => m.remove());
-            // Now unwrap the original text nodes back into the parent
+            // Unwrap original text back into the parent
             const parent = span.parentNode;
-            while (span.firstChild) {
-                parent.insertBefore(span.firstChild, span);
-            }
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
             parent.removeChild(span);
             parent.normalize();
         }
@@ -530,110 +390,78 @@
         tooltipEl.style.display = 'none';
         document.body.appendChild(tooltipEl);
 
-        // Event delegation for highlight hover
-        let showTimeout, hideTimeout;
+        let showTimer, hideTimer;
 
-        document.addEventListener('mouseenter', (e) => {
+        // Hover → show tooltip
+        document.addEventListener('mouseenter', e => {
             const hl = e.target.closest?.('.aid-hl');
             if (!hl) return;
-            clearTimeout(hideTimeout);
-            showTimeout = setTimeout(() => showTooltip(hl), 200);
+            clearTimeout(hideTimer);
+            showTimer = setTimeout(() => showTooltip(hl), 200);
         }, true);
 
-        document.addEventListener('mouseleave', (e) => {
+        document.addEventListener('mouseleave', e => {
             const hl = e.target.closest?.('.aid-hl');
             if (!hl) return;
-            clearTimeout(showTimeout);
-            hideTimeout = setTimeout(() => hideTooltip(), 100);
+            clearTimeout(showTimer);
+            hideTimer = setTimeout(hideTooltip, 100);
         }, true);
 
-        // Click to toggle inline expansion — swap marker text
-        document.addEventListener('click', (e) => {
+        // Click → toggle inline expansion (swap marker text)
+        document.addEventListener('click', e => {
             const hl = e.target.closest?.('.aid-hl');
             if (!hl) return;
             e.preventDefault();
             e.stopPropagation();
-
             const marker = hl.querySelector('.aid-marker');
             if (!marker) return;
-
-            const isExpanded = marker.dataset.isExpanded === 'true';
-            if (isExpanded) {
-                marker.textContent = marker.dataset.collapsed;
-                marker.dataset.isExpanded = 'false';
-                hl.classList.remove('expanded');
-            } else {
-                marker.textContent = marker.dataset.expanded;
-                marker.dataset.isExpanded = 'true';
-                hl.classList.add('expanded');
-            }
+            const expanded = marker.dataset.isExpanded === 'true';
+            marker.textContent = expanded ? marker.dataset.collapsed : marker.dataset.expanded;
+            marker.dataset.isExpanded = String(!expanded);
+            hl.classList.toggle('expanded', !expanded);
         }, true);
     }
 
     function showTooltip(hlEl) {
         if (!tooltipEl) return;
-
         let data;
-        try {
-            data = JSON.parse(hlEl.dataset.tooltipData);
-        } catch {
-            return;
-        }
+        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch { return; }
 
-        const severityEmoji = {
-            info: '🔵', medium: '🟡', high: '🟠', critical: '🔴',
-        };
+        const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
         let html = `
-      <div class="aid-tooltip-header">
-        ${severityEmoji[data.severity] || '⚪'} ${data.severity.toUpperCase()}
-      </div>
-      <div class="aid-tooltip-divider"></div>
-      <div class="aid-tooltip-row"><b>Character:</b> ${escapeHtml(data.charName)}</div>
-      <div class="aid-tooltip-row"><b>Code Point:</b> ${data.codePoint}</div>
-      <div class="aid-tooltip-row"><b>Run Length:</b> ${data.count} ${data.count > 1 ? 'consecutive' : 'single'}</div>
-      <div class="aid-tooltip-row"><b>Category:</b> ${escapeHtml(data.category)}</div>
-    `;
+            <div class="aid-tooltip-header">${emoji[data.severity] || '⚪'} ${data.severity.toUpperCase()}</div>
+            <div class="aid-tooltip-divider"></div>
+            <div class="aid-tooltip-row"><b>Character:</b> ${esc(data.charName)}</div>
+            <div class="aid-tooltip-row"><b>Code Point:</b> ${data.codePoint}</div>
+            <div class="aid-tooltip-row"><b>Run Length:</b> ${data.count} ${data.count > 1 ? 'consecutive' : 'single'}</div>
+            <div class="aid-tooltip-row"><b>Category:</b> ${esc(data.category)}</div>`;
 
-        if (data.hasDecodedMessage && data.decoded) {
+        if (data.hasDecodedMessage && data.decoded)
             html += `
-        <div class="aid-tooltip-divider"></div>
-        <div class="aid-tooltip-row aid-tooltip-decoded"><b>Hidden message:</b> <code>${escapeHtml(data.decoded)}</code></div>
-      `;
-        }
+            <div class="aid-tooltip-divider"></div>
+            <div class="aid-tooltip-row aid-tooltip-decoded"><b>Hidden message:</b> <code>${esc(data.decoded)}</code></div>`;
 
         html += `
-      <div class="aid-tooltip-divider"></div>
-      <div class="aid-tooltip-hint">Click to expand inline</div>
-    `;
+            <div class="aid-tooltip-divider"></div>
+            <div class="aid-tooltip-hint">Click to expand inline</div>`;
 
         tooltipEl.innerHTML = html;
         tooltipEl.style.display = 'block';
 
-        // Position
+        // Position above element, flip below if clipped
         const rect = hlEl.getBoundingClientRect();
-        const tooltipRect = tooltipEl.getBoundingClientRect();
-
-        let top = rect.top - tooltipRect.height - 8 + window.scrollY;
-        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2) + window.scrollX;
-
-        // Viewport collision
-        if (top < window.scrollY) {
-            top = rect.bottom + 8 + window.scrollY;
-        }
-        if (left < 4) left = 4;
-        if (left + tooltipRect.width > window.innerWidth - 4) {
-            left = window.innerWidth - tooltipRect.width - 4;
-        }
-
+        const tr = tooltipEl.getBoundingClientRect();
+        let top = rect.top - tr.height - 8 + scrollY;
+        let left = rect.left + rect.width / 2 - tr.width / 2 + scrollX;
+        if (top < scrollY) top = rect.bottom + 8 + scrollY;
+        left = Math.max(4, Math.min(left, innerWidth - tr.width - 4));
         tooltipEl.style.top = `${top}px`;
         tooltipEl.style.left = `${left}px`;
     }
 
     function hideTooltip() {
-        if (tooltipEl) {
-            tooltipEl.style.display = 'none';
-        }
+        if (tooltipEl) tooltipEl.style.display = 'none';
     }
 
     // ─── Mutation Observer ─────────────────────────────────────────────────
@@ -641,81 +469,52 @@
     let mutationTimer = null;
 
     function pauseObserver() {
-        if (mutationObserver) {
-            mutationObserver.disconnect();
-        }
+        mutationObserver?.disconnect();
     }
 
     function resumeObserver() {
         if (!mutationObserver) {
-            mutationObserver = new MutationObserver((mutations) => {
-                // Ignore mutations caused by our own highlighting
+            mutationObserver = new MutationObserver(mutations => {
                 if (isHighlighting) return;
-
-                // Ignore mutations that originate from our own injected elements
-                const isOwnMutation = mutations.every(m => {
-                    const target = m.target;
-                    if (!target) return false;
-                    const el = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
-                    if (!el) return false;
-                    return el.closest('.aid-hl, .aid-tooltip, .aid-marker') !== null;
-                });
-                if (isOwnMutation) return;
-
+                // Ignore mutations from our own elements
+                if (mutations.every(m => {
+                    const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
+                    return el?.closest('.aid-hl, .aid-tooltip, .aid-marker');
+                })) return;
                 clearTimeout(mutationTimer);
-                mutationTimer = setTimeout(() => {
-                    scanPage(settings);
-                }, 500);
+                mutationTimer = setTimeout(() => scanPage(settings), 500);
             });
         }
-        mutationObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-        });
+        mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
     }
 
-    function setupMutationObserver() {
-        // Initial setup is handled by resumeObserver in scanPage
-    }
+    // ─── Serializable Results (for panel) ──────────────────────────────────
+    // Built from live DOM highlight spans to guarantee 1:1 with jump targets.
 
     function buildSerializableResults() {
-        // Build detections directly from highlight spans (ground truth in the DOM).
-        // This guarantees 1:1 correspondence between panel cards and jump targets.
         const detections = [];
 
         for (const span of highlightSpans) {
-            if (!span.parentNode) continue; // orphaned
-
+            if (!span.parentNode) continue;
             const d = span.dataset;
-            const nodeId = d.nodeId;
-            const severity = d.severity || 'info';
-            const decoded = d.decoded || null;
-            const charCount = parseInt(d.charCount, 10) || 1;
-            const charName = d.charName || 'Unknown';
-            const codePoint = d.codePoint || '';
-            const category = d.category || '';
 
-            // Build context from surrounding text
             let context = '';
             try {
-                const prevText = span.previousSibling?.textContent || '';
-                const nextText = span.nextSibling?.textContent || '';
-                const before = prevText.slice(-20);
-                const after = nextText.slice(0, 20);
+                const before = (span.previousSibling?.textContent || '').slice(-20);
+                const after = (span.nextSibling?.textContent || '').slice(0, 20);
                 context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
             } catch { /* ignore */ }
 
             detections.push({
-                nodeId,
-                groupSize: charCount,
-                severity,
-                type: category,
-                charName,
-                codePoints: [codePoint],
-                decoded,
+                nodeId: d.nodeId,
+                groupSize: parseInt(d.charCount, 10) || 1,
+                severity: d.severity || 'info',
+                type: d.category || '',
+                charName: d.charName || 'Unknown',
+                codePoints: [d.codePoint || ''],
+                decoded: d.decoded || null,
                 context,
-                category,
+                category: d.category || '',
             });
         }
 
@@ -732,7 +531,7 @@
 
     // ─── Message Listener ─────────────────────────────────────────────────
 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         switch (message.action) {
             case 'scan':
                 requestIdleCallback(() => scanPage(message.settings));
@@ -750,11 +549,7 @@
 
             case 'toggleHighlights':
                 pauseObserver();
-                if (message.visible) {
-                    applyHighlights();
-                } else {
-                    removeHighlights();
-                }
+                message.visible ? applyHighlights() : removeHighlights();
                 resumeObserver();
                 break;
 
@@ -766,21 +561,17 @@
 
     // ─── Helpers ───────────────────────────────────────────────────────────
 
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
     }
 
-    // ─── Auto-scan support ────────────────────────────────────────────────
+    // ─── Auto-scan ────────────────────────────────────────────────────────
 
-    // If injected via auto-scan (content_scripts in manifest), scan immediately
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        chrome.storage.local.get('settings', (data) => {
-            const s = data.settings || {};
-            if (s.autoScan) {
-                requestIdleCallback(() => scanPage(s));
-            }
+        chrome.storage.local.get('settings', data => {
+            if (data.settings?.autoScan) requestIdleCallback(() => scanPage(data.settings));
         });
     }
 })();

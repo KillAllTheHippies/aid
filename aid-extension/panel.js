@@ -1,7 +1,6 @@
 /**
  * AID – ASCII Smuggling Detector
- * Detail Panel Script
- * Side Panel (Chrome/Edge) / Sidebar (Firefox)
+ * Detail Panel Script — Side Panel (Chrome/Edge) / Sidebar (Firefox)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -24,36 +23,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Close button
     document.getElementById('close-btn').addEventListener('click', () => window.close());
 
-    // ─── Fetch Results ────────────────────────────────────────────────
+    // ─── Data Loading ────────────────────────────────────────────────
 
     async function loadResults() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) return;
-
-        // Try getting from background cache first
-        const response = await chrome.runtime.sendMessage({
-            action: 'getResults',
-            tabId: tab.id,
-        });
-
-        if (response?.results) {
-            currentResults = response.results;
-            renderResults(currentResults);
+        const { results } = await chrome.runtime.sendMessage({ action: 'getResults', tabId: tab.id });
+        if (results) {
+            currentResults = results;
+            renderResults(results);
         }
     }
 
-    // Listen for live scan updates — refresh from cache to ensure consistent state
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.action === 'scanResults') {
-            // Small delay to ensure background has cached the results
-            setTimeout(() => loadResults(), 100);
-        }
+    // Refresh from cache when a new scan completes
+    chrome.runtime.onMessage.addListener(message => {
+        if (message.action === 'scanResults') setTimeout(loadResults, 100);
     });
 
-    // ─── Render Results ───────────────────────────────────────────────
+    // ─── Rendering ───────────────────────────────────────────────────
 
-    function renderResults(results) {
-        if (!results || !results.suspicion) {
+    function renderResults(r) {
+        if (!r?.suspicion) {
             emptyState.style.display = 'block';
             resultsContainer.style.display = 'none';
             return;
@@ -61,99 +51,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         emptyState.style.display = 'none';
         resultsContainer.style.display = 'block';
-
-        // URL
-        pageUrl.textContent = results.url || '';
+        pageUrl.textContent = r.url || '';
 
         // Summary
-        const s = results.suspicion;
-        const severityEmojis = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
+        const s = r.suspicion;
+        const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
         summaryGrid.innerHTML = `
-      <div class="summary-item summary-item-full level-${s.suspicionLevel}">
-        <div class="summary-item-label">Suspicion Level</div>
-        <div class="summary-item-value">${severityEmojis[s.suspicionLevel] || '⚪'} ${s.suspicionLevel.toUpperCase()}</div>
-      </div>
-      <div class="summary-item summary-item-full">
-        <div class="summary-item-label">Reason</div>
-        <div class="summary-item-value" style="font-size:12px;color:#aaa;">${escapeHtml(s.reason)}</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-item-label">Total Code Points</div>
-        <div class="summary-item-value">${s.totalCodePoints}</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-item-label">Unique Characters</div>
-        <div class="summary-item-value">${s.uniqueCodePoints}</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-item-label">Longest Run</div>
-        <div class="summary-item-value">${s.maxConsecutiveCodePoints}</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-item-label">Longest Tag Run</div>
-        <div class="summary-item-value">${s.maxConsecutiveUnicodeTags}</div>
-      </div>
-    `;
+            <div class="summary-item summary-item-full level-${s.suspicionLevel}">
+                <div class="summary-item-label">Suspicion Level</div>
+                <div class="summary-item-value">${emoji[s.suspicionLevel] || '⚪'} ${s.suspicionLevel.toUpperCase()}</div>
+            </div>
+            <div class="summary-item summary-item-full">
+                <div class="summary-item-label">Reason</div>
+                <div class="summary-item-value" style="font-size:12px;color:#aaa;">${esc(s.reason)}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-label">Total Code Points</div>
+                <div class="summary-item-value">${s.totalCodePoints}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-label">Unique Characters</div>
+                <div class="summary-item-value">${s.uniqueCodePoints}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-label">Longest Run</div>
+                <div class="summary-item-value">${s.maxConsecutiveCodePoints}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-label">Longest Tag Run</div>
+                <div class="summary-item-value">${s.maxConsecutiveUnicodeTags}</div>
+            </div>`;
 
         // Category breakdown
-        if (results.categoryBreakdown) {
-            const entries = Object.entries(results.categoryBreakdown)
-                .filter(([, v]) => v > 0)
-                .sort((a, b) => b[1] - a[1]);
-
-            if (entries.length > 0) {
+        if (r.categoryBreakdown) {
+            const entries = Object.entries(r.categoryBreakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+            if (entries.length) {
                 categorySection.style.display = 'block';
-                categoryGrid.innerHTML = entries.map(([name, count]) => `
-          <div class="category-row">
-            <span class="cat-name">${escapeHtml(name)}</span>
-            <span class="cat-count">${count}</span>
-          </div>
-        `).join('');
+                categoryGrid.innerHTML = entries.map(([name, count]) =>
+                    `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
+                ).join('');
             } else {
                 categorySection.style.display = 'none';
             }
         }
 
-        // Detections grouped by severity
-        renderDetections(results.detections);
+        // Detections
+        renderDetections(r.detections);
 
         // Per-character summary
-        if (results.perCharSummary && results.perCharSummary.length > 0) {
+        if (r.perCharSummary?.length) {
             charSummarySection.style.display = 'block';
-            charTable.innerHTML = results.perCharSummary.map(([name, count]) => `
-        <div class="char-row">
-          <span class="char-name">${escapeHtml(name)}</span>
-          <span class="char-freq">${count}</span>
-        </div>
-      `).join('');
+            charTable.innerHTML = r.perCharSummary.map(([name, count]) =>
+                `<div class="char-row"><span class="char-name">${esc(name)}</span><span class="char-freq">${count}</span></div>`
+            ).join('');
         } else {
             charSummarySection.style.display = 'none';
         }
 
         // Tag runs
-        if (results.tagRunSummary) {
+        if (r.tagRunSummary) {
             tagRunsSection.style.display = 'block';
-            tagRuns.textContent = results.tagRunSummary;
+            tagRuns.textContent = r.tagRunSummary;
         } else {
             tagRunsSection.style.display = 'none';
         }
     }
 
-    // ─── Render Detections ────────────────────────────────────────────
+    // ─── Detection Cards ─────────────────────────────────────────────
 
     function renderDetections(detections) {
-        if (!detections || detections.length === 0) {
+        if (!detections?.length) {
             detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
             return;
         }
 
-        // Group by severity
         const groups = { critical: [], high: [], medium: [], info: [] };
-        for (const d of detections) {
-            (groups[d.severity] || groups.info).push(d);
-        }
+        for (const d of detections) (groups[d.severity] || groups.info).push(d);
 
-        const severityLabels = {
+        const labels = {
             critical: { emoji: '🔴', label: 'Critical' },
             high: { emoji: '🟠', label: 'High' },
             medium: { emoji: '🟡', label: 'Medium' },
@@ -161,46 +136,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         let html = '';
-
         for (const [level, items] of Object.entries(groups)) {
-            if (items.length === 0) continue;
-            const { emoji, label } = severityLabels[level];
+            if (!items.length) continue;
+            const { emoji, label } = labels[level];
 
-            html += `
-        <div class="detection-group-header">
-          <span class="severity-dot ${level}"></span>
-          ${emoji} ${label} (${items.length})
-        </div>
-      `;
+            html += `<div class="detection-group-header">
+                <span class="severity-dot ${level}"></span> ${emoji} ${label} (${items.length})
+            </div>`;
 
             for (const d of items) {
-                html += `
-          <div class="detection-card">
-            <div class="detection-card-header">
-              <span class="detection-card-type">${escapeHtml(d.charName)}</span>
-              <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
-            </div>
-            ${d.decoded ? `<div class="detection-card-decoded">→ "${escapeHtml(d.decoded)}"</div>` : ''}
-            <div class="detection-card-context">${escapeHtml(d.context)}</div>
-            <button class="detection-jump" data-node-id="${d.nodeId}">Jump to location ↗</button>
-          </div>
-        `;
+                html += `<div class="detection-card">
+                    <div class="detection-card-header">
+                        <span class="detection-card-type">${esc(d.charName)}</span>
+                        <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
+                    </div>
+                    ${d.decoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
+                    <div class="detection-card-context">${esc(d.context)}</div>
+                    <button class="detection-jump" data-node-id="${d.nodeId}">Jump to location ↗</button>
+                </div>`;
             }
         }
 
         detectionsList.innerHTML = html;
 
-        // Attach jump handlers
+        // Jump handlers
         detectionsList.querySelectorAll('.detection-jump').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const nodeId = btn.dataset.nodeId;
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (tab) {
-                    chrome.tabs.sendMessage(tab.id, {
-                        action: 'scrollToDetection',
-                        nodeId,
-                    });
-                }
+                if (tab) chrome.tabs.sendMessage(tab.id, { action: 'scrollToDetection', nodeId: btn.dataset.nodeId });
             });
         });
     }
@@ -209,7 +172,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     exportJsonBtn.addEventListener('click', () => {
         if (!currentResults) return;
-
         const report = {
             metadata: {
                 url: currentResults.url,
@@ -218,84 +180,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             page_suspicion: currentResults.suspicion,
             category_breakdown: currentResults.categoryBreakdown,
-            per_character_summary: (currentResults.perCharSummary || []).map(([name, count]) => ({
-                name, count
-            })),
+            per_character_summary: (currentResults.perCharSummary || []).map(([name, count]) => ({ name, count })),
             detections: currentResults.detections.map(d => ({
-                node_index: d.nodeIndex,
-                group_size: d.groupSize,
-                severity: d.severity,
-                type: d.type,
-                char_name: d.charName,
-                code_points: d.codePoints,
-                decoded: d.decoded,
-                context: d.context,
-                category: d.category,
+                node_id: d.nodeId, group_size: d.groupSize, severity: d.severity,
+                type: d.type, char_name: d.charName, code_points: d.codePoints,
+                decoded: d.decoded, context: d.context, category: d.category,
             })),
         };
-
-        downloadFile(
-            JSON.stringify(report, null, 2),
-            `aid-report-${Date.now()}.json`,
-            'application/json'
-        );
+        download(JSON.stringify(report, null, 2), `aid-report-${Date.now()}.json`, 'application/json');
     });
 
     // ─── Export CSV ───────────────────────────────────────────────────
 
     exportCsvBtn.addEventListener('click', () => {
         if (!currentResults) return;
-
-        const header = ['node_index', 'group_size', 'severity', 'type', 'char_name',
-            'code_points', 'decoded', 'context', 'category'];
+        const header = ['node_id', 'group_size', 'severity', 'type', 'char_name', 'code_points', 'decoded', 'context', 'category'];
         const rows = [header.join(',')];
-
         for (const d of currentResults.detections) {
-            const row = [
-                d.nodeIndex,
-                d.groupSize,
-                d.severity,
-                d.type,
-                csvEscape(d.charName),
-                csvEscape(d.codePoints.join(';')),
-                csvEscape(d.decoded || ''),
-                csvEscape(d.context),
-                csvEscape(d.category),
-            ];
-            rows.push(row.join(','));
+            rows.push([d.nodeId, d.groupSize, d.severity, d.type, csvEsc(d.charName),
+            csvEsc(d.codePoints.join(';')), csvEsc(d.decoded || ''), csvEsc(d.context), csvEsc(d.category)].join(','));
         }
-
-        downloadFile(
-            rows.join('\n'),
-            `aid-report-${Date.now()}.csv`,
-            'text/csv'
-        );
+        download(rows.join('\n'), `aid-report-${Date.now()}.csv`, 'text/csv');
     });
 
     // ─── Helpers ──────────────────────────────────────────────────────
 
-    function escapeHtml(str) {
+    function esc(str) {
         if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
     }
 
-    function csvEscape(str) {
+    function csvEsc(str) {
         if (!str) return '';
         str = String(str);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
+        return (str.includes(',') || str.includes('"') || str.includes('\n'))
+            ? '"' + str.replace(/"/g, '""') + '"'
+            : str;
     }
 
-    function downloadFile(content, filename, type) {
-        const blob = new Blob([content], { type });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
+    function download(content, filename, type) {
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const a = Object.assign(document.createElement('a'), { href: url, download: filename });
         a.click();
         URL.revokeObjectURL(url);
     }

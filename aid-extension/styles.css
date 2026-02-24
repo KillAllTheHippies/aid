@@ -37,10 +37,10 @@
   filter: brightness(1.2);
 }
 
-/* Single subtle marker per invisible-char group — hover target */
+/* Group marker — subtle, hoverable indicator */
 .aid-marker {
   font-size: 9px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
   opacity: 0.7;
   vertical-align: middle;
   cursor: help;
@@ -50,6 +50,13 @@
 
 .aid-hl:hover .aid-marker {
   opacity: 1;
+}
+
+/* Expanded marker shows decoded message */
+.aid-hl.expanded .aid-marker {
+  color: #00ff88;
+  opacity: 1;
+  font-size: 11px;
 }
 
 /* Pulse animation for jump-to */
@@ -68,13 +75,6 @@
 
 .aid-hl.pulse {
   animation: aid-pulse 0.6s ease-in-out 3;
-}
-
-/* Expanded marker shows decoded message inside brackets */
-.aid-hl.expanded .aid-marker {
-  color: #00ff88;
-  opacity: 1;
-  font-size: 11px;
 }
 
 /* ─── Tooltip ────────────────────────────────────────────────────────────── */
@@ -123,7 +123,7 @@
   color: #00ff88;
   padding: 1px 4px;
   border-radius: 3px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
   font-size: 11px;
 }
 

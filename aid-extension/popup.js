@@ -21,7 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optCc = document.getElementById('opt-cc');
     const optZs = document.getElementById('opt-zs');
 
-    // ─── Load Settings ──────────────────────────────────────────────────
+    const EMOJI = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
+
+    // ─── Load Settings ──────────────────────────────────────────────
 
     const { settings } = await chrome.runtime.sendMessage({ action: 'getSettings' });
     optAutoScan.checked = settings.autoScan || false;
@@ -29,46 +31,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     optCc.checked = settings.detectControlChars || false;
     optZs.checked = settings.detectSpaceSeparators || false;
 
-    // ─── Settings Toggle ───────────────────────────────────────────────
+    // ─── Settings Panel ─────────────────────────────────────────────
 
     settingsToggle.addEventListener('click', () => {
-        settingsSection.style.display =
-            settingsSection.style.display === 'none' ? 'block' : 'none';
+        settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
     });
 
-    // ─── Save Settings on Change ──────────────────────────────────────
-
     function saveSettings() {
-        const newSettings = {
+        const s = {
             autoScan: optAutoScan.checked,
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
             detectSpaceSeparators: optZs.checked,
         };
 
-        // If enabling auto-scan, request permission first
-        if (newSettings.autoScan && !settings.autoScan) {
-            chrome.permissions.request(
-                { origins: ['<all_urls>'] },
-                (granted) => {
-                    if (!granted) {
-                        optAutoScan.checked = false;
-                        newSettings.autoScan = false;
-                    }
-                    chrome.runtime.sendMessage({ action: 'saveSettings', settings: newSettings });
-                }
-            );
+        if (s.autoScan && !settings.autoScan) {
+            chrome.permissions.request({ origins: ['<all_urls>'] }, granted => {
+                if (!granted) { optAutoScan.checked = false; s.autoScan = false; }
+                chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+            });
         } else {
-            chrome.runtime.sendMessage({ action: 'saveSettings', settings: newSettings });
+            chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
         }
     }
 
-    optAutoScan.addEventListener('change', saveSettings);
-    optConfusable.addEventListener('change', saveSettings);
-    optCc.addEventListener('change', saveSettings);
-    optZs.addEventListener('change', saveSettings);
+    [optAutoScan, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
 
-    // ─── Scan Button ──────────────────────────────────────────────────
+    // ─── Scan Button ────────────────────────────────────────────────
 
     scanBtn.addEventListener('click', async () => {
         scanBtn.disabled = true;
@@ -76,103 +65,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         scanBtn.innerHTML = '<span class="btn-icon">⏳</span> Scanning…';
 
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab) {
-            chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
-        }
+        if (tab) chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
     });
 
-    // ─── Listen for Scan Results ──────────────────────────────────────
+    // ─── Results Handling ───────────────────────────────────────────
 
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.action === 'scanComplete') {
-            showResults(message);
-        }
+    chrome.runtime.onMessage.addListener(message => {
+        if (message.action === 'scanComplete') showLiveResults(message);
     });
 
-    // Also check if we already have results for this tab
+    // Show cached results if available
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
-        const response = await chrome.runtime.sendMessage({
-            action: 'getResults',
-            tabId: tab.id,
-        });
-        if (response?.results) {
-            showResultsFromCache(response.results);
-        }
+        const { results } = await chrome.runtime.sendMessage({ action: 'getResults', tabId: tab.id });
+        if (results) showCachedResults(results);
     }
 
-    function showResults(message) {
-        const { suspicion, totalDetections } = message;
+    function showLiveResults({ suspicion, totalDetections }) {
         scanBtn.disabled = false;
         scanBtn.classList.remove('scanning');
         scanBtn.innerHTML = '<span class="btn-icon">▶</span> Re-scan Page';
-
         statusSection.style.display = 'block';
 
         if (totalDetections === 0) {
-            statusBadge.className = 'status-badge clean';
-            statusEmoji.textContent = '✓';
-            statusText.textContent = 'No detections';
-            statusDetail.textContent = 'Page is clean';
-            categorySection.style.display = 'none';
+            setClean();
         } else {
-            const emojis = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
             statusBadge.className = `status-badge ${suspicion.suspicionLevel}`;
-            statusEmoji.textContent = emojis[suspicion.suspicionLevel] || '⚪';
+            statusEmoji.textContent = EMOJI[suspicion.suspicionLevel] || '⚪';
             statusText.textContent = `${totalDetections} detection${totalDetections !== 1 ? 's' : ''}`;
             statusDetail.textContent = suspicion.reason;
         }
     }
 
-    function showResultsFromCache(results) {
+    function showCachedResults(results) {
         scanBtn.innerHTML = '<span class="btn-icon">▶</span> Re-scan Page';
         statusSection.style.display = 'block';
 
-        if (!results.suspicion || results.detections.length === 0) {
-            statusBadge.className = 'status-badge clean';
-            statusEmoji.textContent = '✓';
-            statusText.textContent = 'No detections';
-            statusDetail.textContent = 'Page is clean';
-            categorySection.style.display = 'none';
+        if (!results.suspicion || !results.detections?.length) {
+            setClean();
             return;
         }
 
         const s = results.suspicion;
-        const emojis = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
         statusBadge.className = `status-badge ${s.suspicionLevel}`;
-        statusEmoji.textContent = emojis[s.suspicionLevel] || '⚪';
+        statusEmoji.textContent = EMOJI[s.suspicionLevel] || '⚪';
         statusText.textContent = `${s.totalCodePoints} detection${s.totalCodePoints !== 1 ? 's' : ''}`;
         statusDetail.textContent = s.reason;
 
-        // Category breakdown
         if (results.categoryBreakdown) {
-            const cats = results.categoryBreakdown;
-            const entries = Object.entries(cats).filter(([, v]) => v > 0)
-                .sort((a, b) => b[1] - a[1]);
-
-            if (entries.length > 0) {
+            const entries = Object.entries(results.categoryBreakdown)
+                .filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+            if (entries.length) {
                 categorySection.style.display = 'block';
-                categoryList.innerHTML = entries.map(([name, count]) => `
-          <div class="category-row">
-            <span class="category-name">${name}</span>
-            <span class="category-count">${count}</span>
-          </div>
-        `).join('');
+                categoryList.innerHTML = entries.map(([name, count]) =>
+                    `<div class="category-row"><span class="category-name">${name}</span><span class="category-count">${count}</span></div>`
+                ).join('');
             }
         }
     }
 
-    // ─── Open Panel ───────────────────────────────────────────────────
+    function setClean() {
+        statusBadge.className = 'status-badge clean';
+        statusEmoji.textContent = '✓';
+        statusText.textContent = 'No detections';
+        statusDetail.textContent = 'Page is clean';
+        categorySection.style.display = 'none';
+    }
+
+    // ─── Open Panel ─────────────────────────────────────────────────
 
     panelBtn.addEventListener('click', async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (chrome.sidePanel) {
-            // Chrome/Edge: open side panel
             chrome.sidePanel.open({ tabId: tab.id });
         } else {
-            // Firefox fallback: sidebar is already accessible via sidebar_action
-            // Just close popup and let user use the sidebar button
-            window.close();
+            window.close(); // Firefox: sidebar is accessible via sidebar_action
         }
     });
 });
