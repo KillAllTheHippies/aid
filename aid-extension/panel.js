@@ -11,8 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categorySection = document.getElementById('category-section');
     const categoryGrid = document.getElementById('category-grid');
     const detectionsList = document.getElementById('detections-list');
-    const charSummarySection = document.getElementById('char-summary-section');
-    const charTable = document.getElementById('char-table');
     const tagRunsSection = document.getElementById('tag-runs-section');
     const tagRuns = document.getElementById('tag-runs');
     const exportJsonBtn = document.getElementById('export-json');
@@ -98,16 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Detections
         renderDetections(r.detections);
 
-        // Per-character summary
-        if (r.perCharSummary?.length) {
-            charSummarySection.style.display = 'block';
-            charTable.innerHTML = r.perCharSummary.map(([name, count]) =>
-                `<div class="char-row"><span class="char-name">${esc(name)}</span><span class="char-freq">${count}</span></div>`
-            ).join('');
-        } else {
-            charSummarySection.style.display = 'none';
-        }
-
         // Tag runs
         if (r.tagRunSummary) {
             tagRunsSection.style.display = 'block';
@@ -180,7 +168,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             page_suspicion: currentResults.suspicion,
             category_breakdown: currentResults.categoryBreakdown,
-            per_character_summary: (currentResults.perCharSummary || []).map(([name, count]) => ({ name, count })),
             detections: currentResults.detections.map(d => ({
                 node_id: d.nodeId, group_size: d.groupSize, severity: d.severity,
                 type: d.type, char_name: d.charName, code_points: d.codePoints,
