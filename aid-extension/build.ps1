@@ -23,7 +23,6 @@ $extensionFiles = @(
     'panel.js',
     'panel.css',
     'styles.css',
-    'icons/icon.svg',
     'icons/icon16.png',
     'icons/icon32.png',
     'icons/icon48.png',
