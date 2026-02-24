@@ -18,10 +18,15 @@
     let settings = {};         // Injected from background
     let mutationObserver = null;
     let isHighlighting = false; // Guard: prevent observer re-fire during DOM edits
+    let isScanning = false;     // Guard: prevent concurrent scans
 
     // ─── Scan Entry Point ──────────────────────────────────────────────────
 
     function scanPage(opts) {
+        // Prevent concurrent scans
+        if (isScanning) return;
+        isScanning = true;
+
         settings = opts || {};
 
         // Disconnect observer during scan+highlight to prevent re-triggering
@@ -37,8 +42,13 @@
             NodeFilter.SHOW_TEXT,
             {
                 acceptNode(node) {
-                    // Skip our own tooltip and marker nodes
-                    if (node.parentElement?.closest('.aid-tooltip, .aid-marker')) {
+                    // Skip our own injected elements
+                    if (node.parentElement?.closest('.aid-tooltip, .aid-marker, .aid-hl')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    // Skip text inside elements hidden by CSS (e.g. responsive clones)
+                    const el = node.parentElement;
+                    if (el && el.getClientRects().length === 0) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     return NodeFilter.FILTER_ACCEPT;
@@ -91,6 +101,8 @@
 
         // Resume observer AFTER all DOM changes are done
         resumeObserver();
+
+        isScanning = false;
     }
 
     // ─── Shadow DOM Traversal ──────────────────────────────────────────────
@@ -473,7 +485,11 @@
                     const marker = document.createElement('span');
                     marker.className = 'aid-marker';
                     marker.setAttribute('aria-hidden', 'true');
-                    marker.textContent = group.length > 1 ? `(${group.length})` : '(·)';
+                    const shortLabel = group.length > 1 ? `(${group.length})` : '(·)';
+                    marker.textContent = shortLabel;
+                    marker.dataset.collapsed = shortLabel;
+                    marker.dataset.expanded = `(${decodedText})`;
+                    marker.dataset.isExpanded = 'false';
                     span.appendChild(marker);
 
                     highlightSpans.push(span);
@@ -531,13 +547,26 @@
             hideTimeout = setTimeout(() => hideTooltip(), 100);
         }, true);
 
-        // Click for inline expansion
+        // Click to toggle inline expansion — swap marker text
         document.addEventListener('click', (e) => {
             const hl = e.target.closest?.('.aid-hl');
             if (!hl) return;
             e.preventDefault();
             e.stopPropagation();
-            hl.classList.toggle('expanded');
+
+            const marker = hl.querySelector('.aid-marker');
+            if (!marker) return;
+
+            const isExpanded = marker.dataset.isExpanded === 'true';
+            if (isExpanded) {
+                marker.textContent = marker.dataset.collapsed;
+                marker.dataset.isExpanded = 'false';
+                hl.classList.remove('expanded');
+            } else {
+                marker.textContent = marker.dataset.expanded;
+                marker.dataset.isExpanded = 'true';
+                hl.classList.add('expanded');
+            }
         }, true);
     }
 
@@ -619,9 +648,20 @@
 
     function resumeObserver() {
         if (!mutationObserver) {
-            mutationObserver = new MutationObserver(() => {
+            mutationObserver = new MutationObserver((mutations) => {
                 // Ignore mutations caused by our own highlighting
                 if (isHighlighting) return;
+
+                // Ignore mutations that originate from our own injected elements
+                const isOwnMutation = mutations.every(m => {
+                    const target = m.target;
+                    if (!target) return false;
+                    const el = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+                    if (!el) return false;
+                    return el.closest('.aid-hl, .aid-tooltip, .aid-marker') !== null;
+                });
+                if (isOwnMutation) return;
+
                 clearTimeout(mutationTimer);
                 mutationTimer = setTimeout(() => {
                     scanPage(settings);
@@ -639,52 +679,44 @@
         // Initial setup is handled by resumeObserver in scanPage
     }
 
-    // ─── Build Serializable Results (for panel) ───────────────────────────
-
     function buildSerializableResults() {
+        // Build detections directly from highlight spans (ground truth in the DOM).
+        // This guarantees 1:1 correspondence between panel cards and jump targets.
         const detections = [];
 
-        for (let nodeIdx = 0; nodeIdx < allResults.length; nodeIdx++) {
-            const { findings } = allResults[nodeIdx];
-            const groups = groupConsecutive(findings);
+        for (const span of highlightSpans) {
+            if (!span.parentNode) continue; // orphaned
 
-            for (const group of groups) {
-                let groupSeverity;
-                if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) {
-                    groupSeverity = 'critical';
-                } else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) {
-                    groupSeverity = 'high';
-                } else {
-                    groupSeverity = pageSuspicion?.suspicionLevel || 'info';
-                }
+            const d = span.dataset;
+            const nodeId = d.nodeId;
+            const severity = d.severity || 'info';
+            const decoded = d.decoded || null;
+            const charCount = parseInt(d.charCount, 10) || 1;
+            const charName = d.charName || 'Unknown';
+            const codePoint = d.codePoint || '';
+            const category = d.category || '';
 
-                const decoded = decodeGroup(group);
+            // Build context from surrounding text
+            let context = '';
+            try {
+                const prevText = span.previousSibling?.textContent || '';
+                const nextText = span.nextSibling?.textContent || '';
+                const before = prevText.slice(-20);
+                const after = nextText.slice(0, 20);
+                context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
+            } catch { /* ignore */ }
 
-                // Build context string
-                const textContent = allResults[nodeIdx].textNode.textContent || '';
-                const startIdx = group[0].charIndex;
-                const endIdx = group[group.length - 1].charIndex + group[group.length - 1].charLen;
-                const contextBefore = textContent.substring(Math.max(0, startIdx - 20), startIdx);
-                const contextAfter = textContent.substring(endIdx, endIdx + 20);
-                const context = `…${contextBefore}⦗███⦘${contextAfter}…`;
-
-                detections.push({
-                    nodeId: `aid-${nodeIdx}-${startIdx}`,
-                    nodeIndex: nodeIdx,
-                    groupSize: group.length,
-                    severity: groupSeverity,
-                    type: group[0].type,
-                    charName: group.length === 1
-                        ? group[0].name
-                        : `${group[0].name} (+${group.length - 1} more)`,
-                    codePoints: group.map(c =>
-                        `U+${c.char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`
-                    ),
-                    decoded,
-                    context: context.replace(/[\n\r\t]/g, ' '),
-                    category: classifyCategory(group[0]),
-                });
-            }
+            detections.push({
+                nodeId,
+                groupSize: charCount,
+                severity,
+                type: category,
+                charName,
+                codePoints: [codePoint],
+                decoded,
+                context,
+                category,
+            });
         }
 
         return {

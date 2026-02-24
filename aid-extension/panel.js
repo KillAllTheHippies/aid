@@ -42,11 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Listen for live scan updates
+    // Listen for live scan updates — refresh from cache to ensure consistent state
     chrome.runtime.onMessage.addListener((message) => {
         if (message.action === 'scanResults') {
-            currentResults = message.results;
-            renderResults(currentResults);
+            // Small delay to ensure background has cached the results
+            setTimeout(() => loadResults(), 100);
         }
     });
 
