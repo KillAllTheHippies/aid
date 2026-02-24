@@ -1,0 +1,146 @@
+/* ─── AID – ASCII Smuggling Detector · Injected Page Styles ─────────────── */
+
+/* ─── Highlight Wrappers ─────────────────────────────────────────────────── */
+
+.aid-hl {
+  position: relative;
+  display: inline;
+  border-radius: 2px;
+  cursor: help;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+/* Severity colors */
+.aid-hl[data-severity="info"] {
+  background: rgba(33, 150, 243, 0.12);
+  box-shadow: 0 0 6px 1px rgba(33, 150, 243, 0.5);
+}
+
+.aid-hl[data-severity="medium"] {
+  background: rgba(255, 193, 7, 0.15);
+  box-shadow: 0 0 6px 1px rgba(255, 193, 7, 0.6);
+}
+
+.aid-hl[data-severity="high"] {
+  background: rgba(255, 152, 0, 0.15);
+  box-shadow: 0 0 8px 2px rgba(255, 152, 0, 0.6);
+}
+
+.aid-hl[data-severity="critical"] {
+  background: rgba(244, 67, 54, 0.18);
+  box-shadow: 0 0 10px 3px rgba(244, 67, 54, 0.7);
+}
+
+/* Hover glow */
+.aid-hl:hover {
+  box-shadow: 0 0 14px 5px currentColor;
+  filter: brightness(1.2);
+}
+
+/* Single subtle marker per invisible-char group — hover target */
+.aid-marker {
+  font-size: 9px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  opacity: 0.7;
+  vertical-align: middle;
+  cursor: help;
+  user-select: none;
+  color: inherit;
+}
+
+.aid-hl:hover .aid-marker {
+  opacity: 1;
+}
+
+/* Pulse animation for jump-to */
+@keyframes aid-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px currentColor;
+  }
+
+  50% {
+    box-shadow: 0 0 24px 8px currentColor;
+    filter: brightness(1.5);
+  }
+}
+
+.aid-hl.pulse {
+  animation: aid-pulse 0.6s ease-in-out 3;
+}
+
+/* Inline expansion */
+.aid-hl.expanded::after {
+  content: attr(data-decoded);
+  background: #1a1a2e;
+  color: #00ff88;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  margin-left: 3px;
+  vertical-align: baseline;
+  white-space: nowrap;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+/* ─── Tooltip ────────────────────────────────────────────────────────────── */
+
+.aid-tooltip {
+  position: absolute;
+  z-index: 2147483647;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 220px;
+  max-width: 380px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.aid-tooltip-header {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.aid-tooltip-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 6px 0;
+}
+
+.aid-tooltip-row {
+  margin: 3px 0;
+}
+
+.aid-tooltip-row b {
+  color: #a0a0c0;
+}
+
+.aid-tooltip-row code {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.aid-tooltip-decoded {
+  word-break: break-all;
+}
+
+.aid-tooltip-hint {
+  font-size: 10px;
+  color: #888;
+  font-style: italic;
+}

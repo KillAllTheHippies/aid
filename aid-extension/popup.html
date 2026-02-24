@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AID – ASCII Smuggling Detector</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="popup-logo">
+        <img src="icons/icon48.png" alt="AID" width="24" height="24">
+        <div>
+          <div class="popup-title">AID</div>
+          <div class="popup-subtitle">ASCII Smuggling Detector</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Button -->
+    <div class="popup-section" id="scan-section">
+      <button id="scan-btn" class="btn-primary">
+        <span class="btn-icon">▶</span> Scan This Page
+      </button>
+    </div>
+
+    <!-- Status (hidden until scan completes) -->
+    <div class="popup-section" id="status-section" style="display: none;">
+      <div class="status-badge" id="status-badge">
+        <span class="status-emoji" id="status-emoji">✓</span>
+        <span class="status-text" id="status-text">No detections</span>
+      </div>
+      <div class="status-detail" id="status-detail"></div>
+    </div>
+
+    <!-- Category Breakdown (hidden until scan completes with findings) -->
+    <div class="popup-section" id="category-section" style="display: none;">
+      <div class="section-label">📊 Category Breakdown</div>
+      <div class="category-list" id="category-list"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="popup-section popup-actions">
+      <button id="panel-btn" class="btn-secondary" title="Open detail panel">
+        Open Detail Panel ↗
+      </button>
+      <button id="settings-toggle" class="btn-icon-only" title="Settings">⚙</button>
+    </div>
+
+    <!-- Settings (hidden by default) -->
+    <div class="popup-section" id="settings-section" style="display: none;">
+      <div class="section-label">⚙ Settings</div>
+      <label class="setting-row">
+        <input type="checkbox" id="opt-autoscan">
+        <span>Auto-scan pages</span>
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="opt-confusable">
+        <span>Detect confusable spaces</span>
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="opt-cc">
+        <span>Detect control chars (Cc)</span>
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="opt-zs">
+        <span>Detect space separators (Zs)</span>
+      </label>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

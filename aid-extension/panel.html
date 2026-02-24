@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AID – Detection Report</title>
+    <link rel="stylesheet" href="panel.css">
+</head>
+
+<body>
+    <div class="panel-container">
+        <!-- Header -->
+        <div class="panel-header">
+            <div class="panel-header-row">
+                <div class="panel-logo">
+                    <img src="icons/icon48.png" alt="AID" width="20" height="20">
+                    <span class="panel-title">AID – Detection Report</span>
+                </div>
+                <button class="panel-close" id="close-btn" title="Close panel">✕</button>
+            </div>
+            <div class="panel-url" id="page-url"></div>
+        </div>
+
+        <!-- No Results State -->
+        <div class="panel-empty" id="empty-state">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-text">No scan results available</div>
+            <div class="empty-hint">Click the AID icon and press "Scan This Page" to start.</div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="results-container" style="display: none;">
+
+            <!-- Page Summary -->
+            <div class="panel-section">
+                <div class="section-header">📊 Page Summary</div>
+                <div class="summary-grid" id="summary-grid"></div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="panel-section" id="category-section" style="display: none;">
+                <div class="section-header">📊 By Category</div>
+                <div class="category-grid" id="category-grid"></div>
+            </div>
+
+            <!-- Detections -->
+            <div class="panel-section">
+                <div class="section-header">📋 Detections</div>
+                <div id="detections-list"></div>
+            </div>
+
+            <!-- Per-Character Summary -->
+            <div class="panel-section" id="char-summary-section" style="display: none;">
+                <div class="section-header">📋 Per-Character Summary</div>
+                <div class="char-table" id="char-table"></div>
+            </div>
+
+            <!-- Tag Runs -->
+            <div class="panel-section" id="tag-runs-section" style="display: none;">
+                <div class="section-header">🏷️ Decoded Unicode Tag Runs</div>
+                <div class="tag-runs" id="tag-runs"></div>
+            </div>
+
+            <!-- Export -->
+            <div class="panel-section panel-export">
+                <button class="btn-export" id="export-json">Export JSON</button>
+                <button class="btn-export" id="export-csv">Export CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="panel.js"></script>
+</body>
+
+</html>
