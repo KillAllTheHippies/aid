@@ -288,6 +288,12 @@
             const { textNode, findings } = allResults[nodeIdx];
             if (!textNode.parentNode) continue;
 
+            // Skip DOM modification inside managed editors (CodeMirror, Monaco, etc.)
+            // Detections are still reported to the side panel.
+            const parentEl = textNode.parentElement;
+            if (parentEl && (parentEl.isContentEditable || parentEl.closest('[contenteditable="true"], textarea, input, [role="textbox"], .cm-content, .CodeMirror, .monaco-editor')))
+                continue;
+
             // Process groups right-to-left so splitText offsets stay valid
             const groups = groupConsecutive(findings)
                 .sort((a, b) => b[0].charIndex - a[0].charIndex);
@@ -509,6 +515,50 @@
                 context,
                 category: d.category || '',
             });
+        }
+
+        // Second pass: add detections from editable regions (not highlighted)
+        const highlightedNodeIds = new Set(detections.map(d => d.nodeId));
+        for (let nodeIdx = 0; nodeIdx < allResults.length; nodeIdx++) {
+            const { textNode, findings } = allResults[nodeIdx];
+            if (!textNode.parentElement) continue;
+            const p = textNode.parentElement;
+            if (!(p.isContentEditable || p.closest('[contenteditable="true"], textarea, input, [role="textbox"], .cm-content, .CodeMirror, .monaco-editor')))
+                continue;
+
+            const groups = groupConsecutive(findings);
+            for (const group of groups) {
+                const startIdx = group[0].charIndex;
+                const nodeId = `aid-${nodeIdx}-${startIdx}`;
+                if (highlightedNodeIds.has(nodeId)) continue;
+
+                const decoded = decodeGroup(group);
+                const decodedText = decoded || (group.length === 1 ? group[0].name : `${group.length} invisible chars`);
+                let severity;
+                if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) severity = 'critical';
+                else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) severity = 'high';
+                else severity = pageSuspicion?.suspicionLevel || 'info';
+
+                let context = '';
+                try {
+                    const txt = textNode.textContent;
+                    const before = txt.slice(Math.max(0, startIdx - 20), startIdx);
+                    const after = txt.slice(startIdx + group.length, startIdx + group.length + 20);
+                    context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
+                } catch { /* ignore */ }
+
+                detections.push({
+                    nodeId,
+                    groupSize: group.length,
+                    severity,
+                    type: classifyCategory(group[0]),
+                    charName: group.length === 1 ? group[0].name : `${group[0].name} (+${group.length - 1} more)`,
+                    codePoints: [`U+${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`],
+                    decoded: decodedText,
+                    context,
+                    category: classifyCategory(group[0]),
+                });
+            }
         }
 
         return {
