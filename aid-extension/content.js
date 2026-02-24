@@ -645,6 +645,7 @@
             categoryBreakdown: getCategoryBreakdown(allResults),
             tagRunSummary: summarizeTagRuns(allResults),
             detections,
+            settings,
         };
     }
 

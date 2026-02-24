@@ -93,6 +93,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // Active Filters / Settings
+        const activeFiltersSection = document.getElementById('active-filters-section');
+        const activeFiltersContent = document.getElementById('active-filters-content');
+        if (r.settings) {
+            activeFiltersSection.style.display = 'block';
+            let filtersHtml = '';
+
+            // Render Include/Exclude Chips
+            if (r.settings.charFilters && r.settings.charFilters.length > 0) {
+                filtersHtml += `<div class="filter-chips-container" style="margin-bottom: 8px;">`;
+                r.settings.charFilters.forEach(filter => {
+                    const typeSymbol = filter.type === 'include' ? '+' : '−';
+                    filtersHtml += `
+                        <div class="filter-chip" style="cursor: default;">
+                            <div class="filter-chip-toggle" data-type="${filter.type}" style="cursor: default;" title="${filter.type === 'include' ? 'Include' : 'Exclude'}">${typeSymbol}</div>
+                            <div class="filter-chip-label">${esc(filter.id)}</div>
+                        </div>`;
+                });
+                filtersHtml += `</div>`;
+            }
+
+            // Render Sequence Limits
+            const min = r.settings.minSeqLength ?? 1;
+            const max = r.settings.maxSeqLength ?? 0;
+            filtersHtml += `<div style="font-size: 11px; color: #aaa; margin-top: 4px; padding-left: 4px; font-family: monospace;">` +
+                `Sequence limits&nbsp; ▶ &nbsp;Min: <span style="color:#fff">${min}</span> &nbsp;Max: <span style="color:#fff">${max === 0 ? '∞' : max}</span>` +
+                `</div>`;
+
+            activeFiltersContent.innerHTML = filtersHtml;
+        } else {
+            activeFiltersSection.style.display = 'none';
+        }
+
         // Detections
         renderDetections(r.detections);
 

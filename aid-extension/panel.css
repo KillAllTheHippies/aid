@@ -373,4 +373,41 @@ body {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
     color: white;
+}/* ─── Active Filters Chips ────────────────────────────────────────────────── */
+
+.filter-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 10px;
+    overflow: hidden;
+}
+
+.filter-chip-toggle {
+    padding: 2px 6px;
+    font-weight: bold;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.filter-chip-toggle[data-type="exclude"] {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ff8a80;
+}
+
+.filter-chip-toggle[data-type="include"] {
+    background: rgba(76, 175, 80, 0.2);
+    color: #69f0ae;
+}
+
+.filter-chip-label {
+    padding: 2px 6px;
+    color: #eee;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
