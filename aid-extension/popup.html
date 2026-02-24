@@ -84,10 +84,15 @@
           <label class="search-filter-label">Detection Tuning</label>
           <div class="filter-input-wrapper">
             <input type="text" id="filter-input" class="setting-text-input"
-              placeholder="Arrow keys or type, click + or - to toggle">
+              placeholder="Type name or U+XXXX to filter...">
             <div class="filter-dropdown" id="filter-dropdown"></div>
           </div>
-          <div class="filter-chips-container" id="filter-chips" style="margin-top: 4px;"></div>
+          <div class="filter-dropdown-hint"
+            style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace;">
+            Arrow keys or type, click <span style="color: #4ade80">+</span> or <span style="color: #f87171">-</span> to
+            toggle
+          </div>
+          <div class="filter-chips-container" id="filter-chips"></div>
           <details class="setting-drawer" id="seq-length-drawer">
             <summary class="setting-drawer-label">Sequence length. <span id="seq-preview" class="seq-preview"></span>
             </summary>
