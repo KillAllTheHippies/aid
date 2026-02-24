@@ -251,13 +251,6 @@
 
     // ─── Summarization Helpers ─────────────────────────────────────────────
 
-    function summarizeChars(results) {
-        const counts = new Map();
-        for (const { findings } of results)
-            for (const f of findings)
-                counts.set(f.name, (counts.get(f.name) || 0) + 1);
-        return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    }
 
     function summarizeTagRuns(results, max = 5) {
         const runs = [], seen = new Set();
@@ -523,7 +516,6 @@
             timestamp: new Date().toISOString(),
             suspicion: pageSuspicion,
             categoryBreakdown: getCategoryBreakdown(allResults),
-            perCharSummary: summarizeChars(allResults),
             tagRunSummary: summarizeTagRuns(allResults),
             detections,
         };
