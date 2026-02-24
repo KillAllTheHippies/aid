@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const settingsSection = document.getElementById('settings-section');
 
     const optAutoScan = document.getElementById('opt-autoscan');
+    const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
     const optCc = document.getElementById('opt-cc');
     const optZs = document.getElementById('opt-zs');
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const { settings } = await chrome.runtime.sendMessage({ action: 'getSettings' });
     optAutoScan.checked = settings.autoScan || false;
+    optNbsp.checked = settings.detectNbsp || false;
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
     optZs.checked = settings.detectSpaceSeparators || false;
@@ -44,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function saveSettings() {
         const s = {
             autoScan: optAutoScan.checked,
+            detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
             detectSpaceSeparators: optZs.checked,
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    [optAutoScan, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optNbsp, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Scan Button ────────────────────────────────────────────────

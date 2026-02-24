@@ -136,6 +136,13 @@
                 findings.push({ char, name: INVISIBLE_CHARS[char], charIndex, charLen, type: 'invisible', decoded: null });
                 continue;
             }
+            // 1.5 NO-BREAK SPACE (U+00A0) - intercepted to use its own toggle
+            if (char === '\u00A0') {
+                if (settings.detectNbsp) {
+                    findings.push({ char, name: 'NO-BREAK SPACE', charIndex, charLen, type: 'space_like', decoded: null });
+                }
+                continue;
+            }
             // 2. Confusable spaces (optional)
             if (settings.detectConfusableSpaces && CONFUSABLE_SPACE_CHARS[char]) {
                 findings.push({ char, name: CONFUSABLE_SPACE_CHARS[char], charIndex, charLen, type: 'space_like', decoded: null });

@@ -8,6 +8,7 @@
 
 const DEFAULT_SETTINGS = {
     autoScan: false,
+    detectNbsp: false,
     detectConfusableSpaces: false,
     detectControlChars: false,
     detectSpaceSeparators: false,
