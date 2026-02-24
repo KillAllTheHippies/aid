@@ -287,6 +287,12 @@ body {
     background: rgba(255, 255, 255, 0.08);
 }
 
+.seq-preview {
+    color: #888;
+    font-size: 11px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
 .filter-chips-container {
     display: flex;
     flex-wrap: wrap;

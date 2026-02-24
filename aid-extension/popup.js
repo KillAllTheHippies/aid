@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optZs = document.getElementById('opt-zs');
     const optMinSeq = document.getElementById('opt-min-seq');
     const optMaxSeq = document.getElementById('opt-max-seq');
+    const seqDrawer = document.getElementById('seq-length-drawer');
+    const seqPreview = document.getElementById('seq-preview');
 
     const EMOJI = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
@@ -64,11 +66,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             chrome.permissions.request({ origins: ['<all_urls>'] }, granted => {
                 if (!granted) { optAutoScan.checked = false; s.autoScan = false; }
                 chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+                triggerRescan();
             });
         } else {
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+            triggerRescan();
         }
+        updateSeqPreview();
     }
+
+    async function triggerRescan() {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
+    }
+
+    function updateSeqPreview() {
+        const min = parseInt(optMinSeq.value, 10) || 1;
+        const max = parseInt(optMaxSeq.value, 10) || 0;
+        seqPreview.textContent = `Min: ${min} - Max: ${max}`;
+    }
+
+    // Update preview on drawer toggle
+    seqDrawer.addEventListener('toggle', updateSeqPreview);
+    updateSeqPreview();
 
     [optAutoScan, optNbsp, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
