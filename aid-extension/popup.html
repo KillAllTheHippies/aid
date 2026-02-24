@@ -58,6 +58,35 @@
         <input type="checkbox" id="opt-autoscan">
         <span>Auto-scan pages</span>
       </label>
+      <div class="setting-input-block">
+        <label class="setting-block-label">Character Filters (Include/Exclude)</label>
+        <div class="filter-chips-container" id="filter-chips"></div>
+        <div class="search-filter-group">
+          <label class="search-filter-label">Search Filtering</label>
+          <div class="search-filter-chips" id="search-filter-chips">
+            <div class="search-filter-chip" data-category="invisible" data-state="include">
+              <span class="sf-toggle">+</span><span class="sf-name">Invisible</span>
+            </div>
+            <div class="search-filter-chip" data-category="variation" data-state="include">
+              <span class="sf-toggle">+</span><span class="sf-name">Variation Selectors</span>
+            </div>
+            <div class="search-filter-chip" data-category="tag" data-state="include">
+              <span class="sf-toggle">+</span><span class="sf-name">Unicode Tags</span>
+            </div>
+            <div class="search-filter-chip" data-category="space" data-state="include">
+              <span class="sf-toggle">+</span><span class="sf-name">Spaces / Confusables</span>
+            </div>
+            <div class="search-filter-chip" data-category="control" data-state="include">
+              <span class="sf-toggle">+</span><span class="sf-name">Control Chars</span>
+            </div>
+          </div>
+        </div>
+        <div class="filter-input-wrapper">
+          <input type="text" id="filter-input" class="setting-text-input"
+            placeholder="Type name or U+XXXX to filter...">
+          <div class="filter-dropdown" id="filter-dropdown"></div>
+        </div>
+      </div>
       <details class="setting-drawer" id="seq-length-drawer">
         <summary class="setting-drawer-label">Sequence length filter</summary>
         <div class="setting-drawer-body">
@@ -91,6 +120,7 @@
     </div>
   </div>
 
+  <script src="unicode-chars.js"></script>
   <script src="popup.js"></script>
 </body>
 

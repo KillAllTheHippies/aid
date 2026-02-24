@@ -285,6 +285,13 @@ body {
     margin: 4px 0;
 }
 
+.detection-card-detail {
+    font-size: 10px;
+    color: #888;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    margin: 0 0 4px;
+}
+
 .detection-jump {
     font-size: 11px;
     color: #7c3aed;

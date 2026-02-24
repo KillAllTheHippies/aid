@@ -2,11 +2,14 @@
  * AID – ASCII Smuggling Detector
  * Character mappings, category sets, and detection utilities.
  * Ported from the Python `aid` CLI tool with full parity.
+ *
+ * NOTE: Uses `var` instead of `const` so that re-injection into the same
+ * page context (e.g. re-scan) doesn't throw "already been declared".
  */
 
 // ─── Primary Detection Set (always active) ──────────────────────────────────
 
-const INVISIBLE_CHARS = {
+var INVISIBLE_CHARS = {
   // Format controls and joiners
   '\u034F': 'COMBINING GRAPHEME JOINER',
   '\u061C': 'ARABIC LETTER MARK',
@@ -69,7 +72,7 @@ const INVISIBLE_CHARS = {
 
 // ─── Optional: Confusable / Suspicious Spaces and Fillers ────────────────────
 
-const CONFUSABLE_SPACE_CHARS = {
+var CONFUSABLE_SPACE_CHARS = {
   '\u00A0': 'NO-BREAK SPACE',
   '\u00AD': 'SOFT HYPHEN',
   '\u2000': 'EN QUAD',
@@ -93,8 +96,8 @@ const CONFUSABLE_SPACE_CHARS = {
 
 // ─── Unicode Tags (U+E0000 – U+E007F) ───────────────────────────────────────
 
-const TAG_START = 0xE0000;
-const TAG_END   = 0xE007F;
+var TAG_START = 0xE0000;
+var TAG_END = 0xE007F;
 
 function isUnicodeTag(codePoint) {
   return codePoint >= TAG_START && codePoint <= TAG_END;
@@ -111,8 +114,8 @@ function decodeUnicodeTag(codePoint) {
 
 // ─── Variation Selector Supplements (VS17–VS256) ────────────────────────────
 
-const VS_SUPPLEMENT_START = 0xE0100;
-const VS_SUPPLEMENT_END   = 0xE01EF;
+var VS_SUPPLEMENT_START = 0xE0100;
+var VS_SUPPLEMENT_END = 0xE01EF;
 
 function isVariationSelectorSupplement(codePoint) {
   return codePoint >= VS_SUPPLEMENT_START && codePoint <= VS_SUPPLEMENT_END;
@@ -124,7 +127,7 @@ function variationSelectorName(codePoint) {
 
 // ─── Optional: Control Characters (Cc) ──────────────────────────────────────
 
-const SKIP_CC = new Set(['\t', '\n', '\r']);
+var SKIP_CC = new Set(['\t', '\n', '\r']);
 
 function isControlChar(char) {
   const cp = char.codePointAt(0);
@@ -138,7 +141,7 @@ function controlCharName(char) {
 
 // ─── Optional: Space Separators (Zs) ────────────────────────────────────────
 
-const ZS_CHARS = new Set([
+var ZS_CHARS = new Set([
   '\u00A0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004',
   '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A', '\u202F',
   '\u205F', '\u3000',
@@ -155,19 +158,19 @@ function zsCharName(char) {
 
 // ─── Category Sets (for summary breakdown) ──────────────────────────────────
 
-const ZERO_WIDTH_CHARS    = new Set(['\u034F','\u180E','\u200B','\u200C','\u200D','\u2060','\uFEFF']);
-const DIRECTIONAL_MARKS   = new Set(['\u061C','\u200E','\u200F','\u202A','\u202B','\u202C',
-                                     '\u202D','\u202E','\u2066','\u2067','\u2068','\u2069']);
-const INVISIBLE_OPERATORS = new Set(['\u2061','\u2062','\u2063','\u2064']);
-const DEPRECATED_CONTROLS = new Set(['\u206A','\u206B','\u206C','\u206D','\u206E','\u206F']);
-const SPACE_LIKE_CHARS    = new Set(Object.keys(CONFUSABLE_SPACE_CHARS));
-const VS_BASIC            = new Set(Array.from({length: 16}, (_, i) => String.fromCharCode(0xFE00 + i)));
+var ZERO_WIDTH_CHARS = new Set(['\u034F', '\u180E', '\u200B', '\u200C', '\u200D', '\u2060', '\uFEFF']);
+var DIRECTIONAL_MARKS = new Set(['\u061C', '\u200E', '\u200F', '\u202A', '\u202B', '\u202C',
+  '\u202D', '\u202E', '\u2066', '\u2067', '\u2068', '\u2069']);
+var INVISIBLE_OPERATORS = new Set(['\u2061', '\u2062', '\u2063', '\u2064']);
+var DEPRECATED_CONTROLS = new Set(['\u206A', '\u206B', '\u206C', '\u206D', '\u206E', '\u206F']);
+var SPACE_LIKE_CHARS = new Set(Object.keys(CONFUSABLE_SPACE_CHARS));
+var VS_BASIC = new Set(Array.from({ length: 16 }, (_, i) => String.fromCharCode(0xFE00 + i)));
 
 // ─── Suspicion Thresholds ───────────────────────────────────────────────────
 
-const HIGH_CONSECUTIVE_RUN_THRESHOLD     = 10;
-const CRITICAL_CONSECUTIVE_RUN_THRESHOLD = 40;
-const SPARSE_HIGH_TOTAL_THRESHOLD        = 100;
+var HIGH_CONSECUTIVE_RUN_THRESHOLD = 10;
+var CRITICAL_CONSECUTIVE_RUN_THRESHOLD = 40;
+var SPARSE_HIGH_TOTAL_THRESHOLD = 100;
 
 /**
  * Classify a finding into a category for the summary breakdown.
@@ -175,16 +178,82 @@ const SPARSE_HIGH_TOTAL_THRESHOLD        = 100;
  */
 function classifyCategory(finding) {
   const char = finding.char;
-  if (finding.type === 'tag')        return 'Unicode Tags';
-  if (ZERO_WIDTH_CHARS.has(char))    return 'Zero-Width & Joiners';
-  if (DIRECTIONAL_MARKS.has(char))   return 'Directional & Bidi Marks';
-  if (VS_BASIC.has(char))            return 'Variation Selectors';
+  if (finding.type === 'tag') return 'Unicode Tags';
+  if (ZERO_WIDTH_CHARS.has(char)) return 'Zero-Width & Joiners';
+  if (DIRECTIONAL_MARKS.has(char)) return 'Directional & Bidi Marks';
+  if (VS_BASIC.has(char)) return 'Variation Selectors';
   if (finding.type === 'invisible' && isVariationSelectorSupplement(char.codePointAt(0)))
-                                     return 'Variation Selectors';
+    return 'Variation Selectors';
   if (INVISIBLE_OPERATORS.has(char)) return 'Invisible Operators';
   if (DEPRECATED_CONTROLS.has(char)) return 'Deprecated Format Controls';
   if (finding.type === 'space_like') return 'Space-Like / Blank Chars';
-  if (finding.type === 'cc')         return 'Control Characters (Cc)';
-  if (finding.type === 'zs')         return 'Space Separators (Zs)';
+  if (finding.type === 'cc') return 'Control Characters (Cc)';
+  if (finding.type === 'zs') return 'Space Separators (Zs)';
   return 'Other Invisible';
+}
+
+// ─── Dictionary for Autocomplete ────────────────────────────────────────────
+
+var _allKnownCharacters = null;
+
+/**
+ * Returns a comprehensive array of all known characters to power the 
+ * autocomplete filter UI. Format: { char, name, codeStr }
+ */
+function getAllKnownCharacters() {
+  if (_allKnownCharacters) return _allKnownCharacters;
+
+  const list = [];
+
+  function add(char, name, searchCategory) {
+    const cp = char.codePointAt(0);
+    const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+    list.push({ char, name, codeStr, searchCategory, type: classifyCategory({ char, type: 'invisible' }) });
+  }
+
+  // 1. Primary
+  for (const [char, name] of Object.entries(INVISIBLE_CHARS)) {
+    // VS1-16 are in INVISIBLE_CHARS but we add them separately below with ASCII info
+    const cp = char.codePointAt(0);
+    if (cp >= 0xFE00 && cp <= 0xFE0F) continue;
+    add(char, name, 'invisible');
+  }
+
+  // 1.5 NBSP
+  add('\u00A0', 'NO-BREAK SPACE', 'space');
+
+  // 2. Confusables
+  for (const [char, name] of Object.entries(CONFUSABLE_SPACE_CHARS)) {
+    if (char !== '\u00A0') add(char, name, 'space'); // already added
+  }
+
+  // 3. Variation Selectors (VS17-VS256)
+  for (let cp = VS_SUPPLEMENT_START; cp <= VS_SUPPLEMENT_END; cp++) {
+    const char = String.fromCodePoint(cp);
+    let name = variationSelectorName(cp);
+    let lowByte = cp - VS_SUPPLEMENT_START;
+    let asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
+    add(char, `${name} (ASCII: ${asciiStr})`, 'variation');
+  }
+
+  // 3.5 Variation Selectors (VS1-16)
+  for (let i = 0; i < 16; i++) {
+    const cp = 0xFE00 + i;
+    const char = String.fromCodePoint(cp);
+    add(char, `VARIATION SELECTOR-${i + 1} (ASCII: 0x${i.toString(16).padStart(2, '0')})`, 'variation');
+  }
+
+  // 4. Unicode Tags (U+E0000 - U+E007F) - These are the ones that actually map to ASCII
+  for (let cp = TAG_START; cp <= TAG_END; cp++) {
+    const char = String.fromCodePoint(cp);
+    let decoded = decodeUnicodeTag(cp);
+    // Make the ASCII counterpart obvious
+    add(char, `UNICODE TAG (ASCII: ${decoded})`, 'tag');
+  }
+
+  // Sort alphabetically by name
+  list.sort((a, b) => a.name.localeCompare(b.name));
+
+  _allKnownCharacters = list;
+  return list;
 }

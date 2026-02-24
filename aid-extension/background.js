@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS = {
     detectSpaceSeparators: false,
     minSeqLength: 1,
     maxSeqLength: 0,  // 0 = no limit
+    charFilters: [],  // array of { id: "U+FE0F", type: "exclude"|"include" }
 };
 
 const BADGE_COLORS = {

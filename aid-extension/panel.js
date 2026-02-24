@@ -133,11 +133,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>`;
 
             for (const d of items) {
+                const detailLine = d.detail && d.detail !== d.codePoints?.[0]
+                    ? `<div class="detection-card-detail">${esc(d.detail)}</div>`
+                    : '';
                 html += `<div class="detection-card">
                     <div class="detection-card-header">
                         <span class="detection-card-type">${esc(d.charName)}</span>
                         <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
-                    </div>
+                    </div>${detailLine}
                     ${d.decoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
                     <div class="detection-card-context">${esc(d.context)}</div>
                     <button class="detection-jump" data-node-id="${d.nodeId}">Jump to location ↗</button>

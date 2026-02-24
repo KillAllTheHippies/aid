@@ -121,6 +121,18 @@
         if (!text) return [];
 
         const findings = [];
+        const charFilters = settings.charFilters || [];
+        const includeSet = new Set(charFilters.filter(f => f.type === 'include').map(f => f.id));
+        const excludeSet = new Set(charFilters.filter(f => f.type === 'exclude').map(f => f.id));
+        const isAllowListMode = includeSet.size > 0;
+
+        // Helper to check if a char should be skipped based on filters
+        function shouldSkip(name, codeStr) {
+            if (isAllowListMode) {
+                return !includeSet.has(name) && !includeSet.has(codeStr);
+            }
+            return excludeSet.has(name) || excludeSet.has(codeStr);
+        }
 
         for (let i = 0; i < text.length; i++) {
             const cp = text.codePointAt(i);
@@ -133,39 +145,74 @@
 
             // 1. Primary invisible chars
             if (INVISIBLE_CHARS[char]) {
-                findings.push({ char, name: INVISIBLE_CHARS[char], charIndex, charLen, type: 'invisible', decoded: null });
+                const name = INVISIBLE_CHARS[char];
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (shouldSkip(name, codeStr)) continue;
+                findings.push({ char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: codeStr });
                 continue;
             }
             // 1.5 NO-BREAK SPACE (U+00A0) - intercepted to use its own toggle
+            // In allow-list mode, we ignore the individual toggle and just check the include list
             if (char === '\u00A0') {
-                if (settings.detectNbsp) {
-                    findings.push({ char, name: 'NO-BREAK SPACE', charIndex, charLen, type: 'space_like', decoded: null });
+                const name = 'NO-BREAK SPACE';
+                const codeStr = 'U+00A0';
+                if (isAllowListMode) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
+                } else if (settings.detectNbsp) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
                 }
                 continue;
             }
             // 2. Confusable spaces (optional)
-            if (settings.detectConfusableSpaces && CONFUSABLE_SPACE_CHARS[char]) {
-                findings.push({ char, name: CONFUSABLE_SPACE_CHARS[char], charIndex, charLen, type: 'space_like', decoded: null });
+            if (CONFUSABLE_SPACE_CHARS[char]) {
+                const name = CONFUSABLE_SPACE_CHARS[char];
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (isAllowListMode) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
+                } else if (settings.detectConfusableSpaces) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
+                }
                 continue;
             }
             // 3. Variation Selector Supplements (VS17–VS256)
             if (isVariationSelectorSupplement(cp)) {
-                findings.push({ char, name: variationSelectorName(cp), charIndex, charLen, type: 'invisible', decoded: null });
+                const name = variationSelectorName(cp);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (shouldSkip(name, codeStr)) continue;
+                const lowByte = cp - VS_SUPPLEMENT_START;
+                const asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
+                findings.push({ char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: `${codeStr} → ASCII: ${asciiStr}` });
                 continue;
             }
             // 4. Unicode Tags (U+E0001–U+E007F)
             if (isUnicodeTag(cp)) {
-                findings.push({ char, name: 'UNICODE TAG', charIndex, charLen, type: 'tag', decoded: decodeUnicodeTag(cp) });
+                const name = 'UNICODE TAG';
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (shouldSkip(name, codeStr)) continue;
+                const tagDecoded = decodeUnicodeTag(cp);
+                findings.push({ char, name, charIndex, charLen, type: 'tag', decoded: tagDecoded, detail: `${codeStr} → ASCII: ${tagDecoded}` });
                 continue;
             }
             // 5. Control chars (optional)
-            if (settings.detectControlChars && isControlChar(char)) {
-                findings.push({ char, name: controlCharName(char), charIndex, charLen, type: 'cc', decoded: null });
+            if (isControlChar(char)) {
+                const name = controlCharName(char);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (isAllowListMode) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'cc', decoded: null, detail: codeStr });
+                } else if (settings.detectControlChars) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'cc', decoded: null, detail: codeStr });
+                }
                 continue;
             }
             // 6. Space separators (optional)
-            if (settings.detectSpaceSeparators && isSpaceSeparator(char)) {
-                findings.push({ char, name: zsCharName(char), charIndex, charLen, type: 'zs', decoded: null });
+            if (isSpaceSeparator(char)) {
+                const name = zsCharName(char);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (isAllowListMode) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'zs', decoded: null, detail: codeStr });
+                } else if (settings.detectSpaceSeparators) {
+                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'zs', decoded: null, detail: codeStr });
+                }
             }
         }
 
@@ -340,11 +387,15 @@
                         ? group[0].name
                         : `${group[0].name} (+${group.length - 1} more)`;
                     span.dataset.codePoint = `U+${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
+                    span.dataset.detail = group.length === 1
+                        ? (group[0].detail || '')
+                        : '';
                     span.dataset.category = classifyCategory(group[0]);
                     span.dataset.tooltipData = JSON.stringify({
                         severity,
                         charName: group.length === 1 ? group[0].name : `${group.length} invisible characters`,
                         codePoint: span.dataset.codePoint,
+                        detail: span.dataset.detail,
                         count: group.length,
                         category: span.dataset.category,
                         decoded: decodedText,
@@ -447,7 +498,8 @@
             <div class="aid-tooltip-header">${emoji[data.severity] || '⚪'} ${data.severity.toUpperCase()}</div>
             <div class="aid-tooltip-divider"></div>
             <div class="aid-tooltip-row"><b>Character:</b> ${esc(data.charName)}</div>
-            <div class="aid-tooltip-row"><b>Code Point:</b> ${data.codePoint}</div>
+            <div class="aid-tooltip-row"><b>Code Point:</b> ${data.codePoint}</div>${data.detail && data.detail !== data.codePoint ? `
+            <div class="aid-tooltip-row" style="color:#aaa;font-size:11px;">${esc(data.detail)}</div>` : ''}
             <div class="aid-tooltip-row"><b>Run Length:</b> ${data.count} ${data.count > 1 ? 'consecutive' : 'single'}</div>
             <div class="aid-tooltip-row"><b>Category:</b> ${esc(data.category)}</div>`;
 
@@ -526,6 +578,7 @@
                 type: d.category || '',
                 charName: d.charName || 'Unknown',
                 codePoints: [d.codePoint || ''],
+                detail: d.detail || '',
                 decoded: d.decoded || null,
                 context,
                 category: d.category || '',
@@ -575,6 +628,9 @@
                     type: classifyCategory(group[0]),
                     charName: group.length === 1 ? group[0].name : `${group[0].name} (+${group.length - 1} more)`,
                     codePoints: [`U+${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`],
+                    detail: group.length === 1
+                        ? (group[0].detail || '')
+                        : '',
                     decoded: decodedText,
                     context,
                     category: classifyCategory(group[0]),

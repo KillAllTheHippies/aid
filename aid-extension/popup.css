@@ -255,6 +255,200 @@ body {
     height: 14px;
 }
 
+/* ─── Settings Input Block ───────────────────────────────────────────────── */
+
+.setting-input-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.setting-block-label {
+    font-size: 11px;
+    color: #bbb;
+}
+
+.setting-text-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    outline: none;
+}
+
+.setting-text-input:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+/* ─── Search Filtering Group ─────────────────────────────────────────────── */
+
+.search-filter-group {
+    margin: 6px 0;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+}
+
+.search-filter-label {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.search-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.search-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.15s ease;
+}
+
+.search-filter-chip[data-state="include"] {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.search-filter-chip[data-state="exclude"] {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.sf-toggle {
+    padding: 2px 5px;
+    font-weight: bold;
+}
+
+.search-filter-chip[data-state="include"] .sf-toggle {
+    color: #69f0ae;
+}
+
+.search-filter-chip[data-state="exclude"] .sf-toggle {
+    color: #ff8a80;
+}
+
+.sf-name {
+    padding: 2px 6px 2px 0;
+    color: #ccc;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-size: 10px;
+    overflow: hidden;
+}
+
+.filter-chip-toggle {
+    padding: 2px 6px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: bold;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.filter-chip-toggle[data-type="exclude"] {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ff8a80;
+}
+
+.filter-chip-toggle[data-type="include"] {
+    background: rgba(76, 175, 80, 0.2);
+    color: #69f0ae;
+}
+
+.filter-chip-label {
+    padding: 2px 6px;
+    color: #eee;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.filter-chip-remove {
+    padding: 2px 6px;
+    cursor: pointer;
+    color: #999;
+}
+
+.filter-chip-remove:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.filter-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border: 1px solid rgba(124, 58, 237, 0.5);
+    border-radius: 4px;
+    z-index: 100;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.filter-dropdown.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #ccc;
+    cursor: pointer;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+    background: rgba(124, 58, 237, 0.2);
+    color: #fff;
+}
+
+.dropdown-item-code {
+    color: #888;
+    margin-right: 6px;
+}
+
+
 /* ─── Settings Drawer ────────────────────────────────────────────────────── */
 
 .setting-drawer {
