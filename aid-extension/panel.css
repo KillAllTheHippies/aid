@@ -373,7 +373,9 @@ body {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
     color: white;
-}/* ─── Active Filters Chips ────────────────────────────────────────────────── */
+}
+
+/* ─── Active Filters Chips ────────────────────────────────────────────────── */
 
 .filter-chips-container {
     display: flex;
@@ -410,4 +412,274 @@ body {
     padding: 2px 6px;
     color: #eee;
     font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* ─── Panel Filter Drawer ────────────────────────────────────────────────── */
+
+.panel-filter-drawer {
+    margin-top: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-filter-drawer-label {
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #888;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.panel-filter-drawer-label::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s;
+}
+
+.panel-filter-drawer[open]>.panel-filter-drawer-label::before {
+    transform: rotate(90deg);
+}
+
+.panel-filter-drawer-label:hover {
+    color: #ccc;
+}
+
+.panel-filter-drawer-body {
+    padding: 8px 12px 12px;
+}
+
+/* ─── Search Filter Group (shared with popup) ────────────────────────────── */
+
+.search-filter-group {
+    margin: 6px 0;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.search-filter-label {
+    font-size: 10px;
+    color: #888;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.search-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.search-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s;
+    font-size: 11px;
+}
+
+.search-filter-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sf-toggle {
+    padding: 2px 6px;
+    font-weight: bold;
+}
+
+.search-filter-chip[data-state="include"] .sf-toggle {
+    color: #69f0ae;
+}
+
+.search-filter-chip[data-state="exclude"] .sf-toggle {
+    color: #ff8a80;
+}
+
+.sf-name {
+    padding: 2px 6px 2px 0;
+    color: #ccc;
+}
+
+/* ─── Filter Input & Dropdown ────────────────────────────────────────────── */
+
+.filter-input-wrapper {
+    position: relative;
+}
+
+.setting-text-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.setting-text-input:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border: 1px solid rgba(124, 58, 237, 0.5);
+    border-radius: 4px;
+    z-index: 100;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.filter-dropdown.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #ccc;
+    cursor: pointer;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+    background: rgba(124, 58, 237, 0.2);
+    color: white;
+}
+
+.dropdown-item-code {
+    display: inline-block;
+    min-width: 64px;
+    color: #7c3aed;
+    font-weight: 600;
+}
+
+/* ─── Filter Chip Remove Button ──────────────────────────────────────────── */
+
+.filter-chip-remove {
+    padding: 2px 6px;
+    cursor: pointer;
+    color: #ff8a80;
+    font-weight: bold;
+}
+
+.filter-chip-remove:hover {
+    color: #ff5252;
+    background: rgba(244, 67, 54, 0.2);
+}
+
+.filter-chip-toggle {
+    cursor: pointer;
+}
+
+/* ─── Setting Drawer (Sequence Length) ───────────────────────────────────── */
+
+.setting-drawer {
+    margin-top: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+}
+
+.setting-drawer-label {
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #888;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.setting-drawer-label::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s;
+}
+
+.setting-drawer[open]>.setting-drawer-label::before {
+    transform: rotate(90deg);
+}
+
+.setting-drawer-label:hover {
+    color: white;
+}
+
+.setting-drawer-body {
+    padding: 6px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.seq-preview {
+    color: #888;
+    font-size: 11px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.setting-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #bbb;
+}
+
+.setting-number {
+    width: 64px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    text-align: center;
+    outline: none;
+}
+
+.setting-number:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.setting-hint {
+    font-size: 10px;
+    color: #666;
+    font-style: italic;
+}
+
+/* ─── Setting Rows (Checkboxes) ──────────────────────────────────────────── */
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: #bbb;
+    cursor: pointer;
+}
+
+.setting-row:hover {
+    color: white;
+}
+
+.setting-row input[type="checkbox"] {
+    accent-color: #7c3aed;
 }

@@ -93,11 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Active Filters / Settings
-        const activeFiltersSection = document.getElementById('active-filters-section');
+        // Active Filters summary (read-only chips above the drawer)
         const activeFiltersContent = document.getElementById('active-filters-content');
         if (r.settings) {
-            activeFiltersSection.style.display = 'block';
             let filtersHtml = '';
 
             // Render Include/Exclude Chips
@@ -122,8 +120,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `</div>`;
 
             activeFiltersContent.innerHTML = filtersHtml;
-        } else {
-            activeFiltersSection.style.display = 'none';
         }
 
         // Detections
@@ -201,6 +197,253 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ─── Filter Drawer Controls ──────────────────────────────────────
+
+    const panelFilterInput = document.getElementById('panel-filter-input');
+    const panelFilterDropdown = document.getElementById('panel-filter-dropdown');
+    const panelFilterChips = document.getElementById('panel-filter-chips');
+    const panelOptNbsp = document.getElementById('panel-opt-nbsp');
+    const panelOptConfusable = document.getElementById('panel-opt-confusable');
+    const panelOptCc = document.getElementById('panel-opt-cc');
+    const panelOptZs = document.getElementById('panel-opt-zs');
+    const panelOptMinSeq = document.getElementById('panel-opt-min-seq');
+    const panelOptMaxSeq = document.getElementById('panel-opt-max-seq');
+    const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
+    const panelSeqPreview = document.getElementById('panel-seq-preview');
+
+    let charFilters = [];
+
+    // Load known characters for autocomplete
+    let knownChars = [];
+    try { knownChars = getAllKnownCharacters(); } catch { /* */ }
+
+    // Search filter category toggles
+    const searchFilterChips = document.querySelectorAll('#filter-drawer .search-filter-chip');
+    const categoryStates = {};
+
+    searchFilterChips.forEach(chip => {
+        const cat = chip.dataset.category;
+        categoryStates[cat] = chip.dataset.state;
+
+        chip.addEventListener('click', () => {
+            const newState = chip.dataset.state === 'include' ? 'exclude' : 'include';
+            chip.dataset.state = newState;
+            categoryStates[cat] = newState;
+            chip.querySelector('.sf-toggle').textContent = newState === 'include' ? '+' : '\u2212';
+            triggerDropdownRefresh();
+        });
+    });
+
+    function getFilteredKnownChars(query) {
+        const enabledCategories = Object.entries(categoryStates)
+            .filter(([, state]) => state === 'include')
+            .map(([cat]) => cat);
+
+        return knownChars.filter(c => {
+            if (!enabledCategories.includes(c.searchCategory)) return false;
+            if (query) {
+                return c.name.toLowerCase().includes(query) ||
+                    c.codeStr.toLowerCase().includes(query);
+            }
+            return true;
+        }).slice(0, 500);
+    }
+
+    function triggerDropdownRefresh() {
+        if (!panelFilterDropdown.classList.contains('show')) return;
+        const query = panelFilterInput.value.trim().toLowerCase();
+        renderDropdown(getFilteredKnownChars(query));
+    }
+
+    function renderFilterChips() {
+        panelFilterChips.innerHTML = '';
+        charFilters.forEach((filter, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'filter-chip';
+
+            const toggle = document.createElement('div');
+            toggle.className = 'filter-chip-toggle';
+            toggle.dataset.type = filter.type;
+            toggle.textContent = filter.type === 'include' ? '+' : '−';
+            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : 'Exclude (Ignore)';
+            toggle.addEventListener('click', () => {
+                filter.type = filter.type === 'include' ? 'exclude' : 'include';
+                renderFilterChips();
+                saveFilterSettings();
+            });
+
+            const label = document.createElement('div');
+            label.className = 'filter-chip-label';
+            label.textContent = filter.id;
+
+            const remove = document.createElement('div');
+            remove.className = 'filter-chip-remove';
+            remove.textContent = '×';
+            remove.addEventListener('click', () => {
+                charFilters.splice(index, 1);
+                renderFilterChips();
+                saveFilterSettings();
+            });
+
+            chip.appendChild(toggle);
+            chip.appendChild(label);
+            chip.appendChild(remove);
+            panelFilterChips.appendChild(chip);
+        });
+    }
+
+    let currentFocus = -1;
+    let currentMatches = [];
+
+    function renderDropdown(matches) {
+        currentMatches = matches;
+        currentFocus = -1;
+        panelFilterDropdown.innerHTML = '';
+        if (matches.length === 0) {
+            panelFilterDropdown.classList.remove('show');
+            return;
+        }
+
+        matches.forEach((match, idx) => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.id = `panel-dropdown-item-${idx}`;
+
+            const codeSpan = document.createElement('span');
+            codeSpan.className = 'dropdown-item-code';
+            codeSpan.textContent = match.codeStr;
+
+            item.appendChild(codeSpan);
+            item.appendChild(document.createTextNode(match.name));
+
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                addFilter(match);
+            });
+
+            panelFilterDropdown.appendChild(item);
+        });
+        panelFilterDropdown.classList.add('show');
+    }
+
+    function addFilter(match) {
+        if (!charFilters.find(f => f.id === match.codeStr)) {
+            charFilters.push({ id: match.codeStr, type: 'exclude' });
+            renderFilterChips();
+            saveFilterSettings();
+        }
+        panelFilterInput.value = '';
+        panelFilterDropdown.classList.remove('show');
+        panelFilterInput.focus();
+    }
+
+    function setActiveItem(items) {
+        if (!items || items.length === 0) return;
+        Array.from(items).forEach(item => item.classList.remove('active'));
+        if (currentFocus >= items.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = items.length - 1;
+        items[currentFocus].classList.add('active');
+        items[currentFocus].scrollIntoView({ block: 'nearest' });
+    }
+
+    panelFilterInput.addEventListener('keydown', (e) => {
+        const items = panelFilterDropdown.querySelectorAll('.dropdown-item');
+        if (!panelFilterDropdown.classList.contains('show') || items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            currentFocus++;
+            setActiveItem(items);
+        } else if (e.key === 'ArrowUp') {
+            currentFocus--;
+            setActiveItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1) {
+                items[currentFocus].dispatchEvent(new MouseEvent('mousedown'));
+            } else if (items.length === 1) {
+                items[0].dispatchEvent(new MouseEvent('mousedown'));
+            }
+        }
+    });
+
+    panelFilterInput.addEventListener('input', () => {
+        const query = panelFilterInput.value.trim().toLowerCase();
+        renderDropdown(getFilteredKnownChars(query));
+    });
+
+    panelFilterInput.addEventListener('focus', () => {
+        const query = panelFilterInput.value.trim().toLowerCase();
+        renderDropdown(getFilteredKnownChars(query));
+    });
+
+    panelFilterInput.addEventListener('click', () => {
+        if (!panelFilterDropdown.classList.contains('show')) {
+            const query = panelFilterInput.value.trim().toLowerCase();
+            renderDropdown(getFilteredKnownChars(query));
+        }
+    });
+
+    panelFilterInput.addEventListener('blur', () => {
+        panelFilterDropdown.classList.remove('show');
+    });
+
+    function updateSeqPreview() {
+        const min = parseInt(panelOptMinSeq.value, 10) || 1;
+        const max = parseInt(panelOptMaxSeq.value, 10) || 0;
+        panelSeqPreview.textContent = `Min: ${min} - Max: ${max}`;
+    }
+
+    panelSeqDrawer.addEventListener('toggle', updateSeqPreview);
+    updateSeqPreview();
+
+    // Save settings and trigger re-scan
+    function saveFilterSettings() {
+        const s = {
+            autoScan: false, // Don't change autoScan from panel
+            charFilters: charFilters,
+            detectNbsp: panelOptNbsp.checked,
+            detectConfusableSpaces: panelOptConfusable.checked,
+            detectControlChars: panelOptCc.checked,
+            detectSpaceSeparators: panelOptZs.checked,
+            minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
+            maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
+        };
+
+        // Preserve autoScan from the loaded settings
+        chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
+            if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
+            chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+            triggerRescan();
+        });
+        updateSeqPreview();
+    }
+
+    async function triggerRescan() {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
+    }
+
+    // Checkbox & number input handlers
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs].forEach(el =>
+        el.addEventListener('change', saveFilterSettings));
+    [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
+        el.addEventListener('input', saveFilterSettings));
+
+    // Load settings into the drawer controls
+    async function loadFilterSettings() {
+        const resp = await chrome.runtime.sendMessage({ action: 'getSettings' });
+        const settings = resp?.settings || {};
+        charFilters = settings.charFilters || [];
+        panelOptNbsp.checked = settings.detectNbsp || false;
+        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
+        panelOptCc.checked = settings.detectControlChars || false;
+        panelOptZs.checked = settings.detectSpaceSeparators || false;
+        panelOptMinSeq.value = settings.minSeqLength ?? 1;
+        panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
+        renderFilterChips();
+        updateSeqPreview();
+    }
+
     // ─── Export JSON ──────────────────────────────────────────────────
 
     exportJsonBtn.addEventListener('click', () => {
@@ -261,5 +504,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ─── Initialize ───────────────────────────────────────────────────
 
+    loadFilterSettings();
     loadResults();
 });
