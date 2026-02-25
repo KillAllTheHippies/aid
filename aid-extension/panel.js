@@ -203,10 +203,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         detectionsList.querySelectorAll('.detection-copy').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
-                const text = btn.dataset.copyText;
-                if (!text) return;
+                const rawText = btn.dataset.copyText;
+                if (!rawText) return;
                 try {
-                    await navigator.clipboard.writeText(text);
+                    // Sanitize output to prevent escaping quote structures when pasted
+                    const sanitizedText = JSON.stringify(rawText).slice(1, -1).replace(/'/g, "\\'");
+                    await navigator.clipboard.writeText(sanitizedText);
                     const originalHtml = btn.innerHTML;
                     btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="#00ff88" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
                     setTimeout(() => {

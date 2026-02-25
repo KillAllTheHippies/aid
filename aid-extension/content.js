@@ -484,8 +484,10 @@
 
             // Frictionless Copy
             if (e.ctrlKey || e.metaKey) {
-                const textToCopy = hl.dataset.decoded || '';
-                navigator.clipboard.writeText(textToCopy).catch(err => console.warn('Copy failed:', err));
+                const rawText = hl.dataset.decoded || '';
+                // Sanitize output to prevent escaping quote structures when pasted
+                const sanitizedText = JSON.stringify(rawText).slice(1, -1).replace(/'/g, "\\'");
+                navigator.clipboard.writeText(sanitizedText).catch(err => console.warn('Copy failed:', err));
 
                 marker.textContent = '(Copied!)';
                 const originalColor = marker.style.color;
