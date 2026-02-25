@@ -364,7 +364,7 @@
                 const startIdx = group[0].charIndex;
                 const endIdx = group.at(-1).charIndex + group.at(-1).charLen;
                 const decoded = decodeGroup(group);
-                const decodedText = decoded || (group.length === 1 ? group[0].name : `${group.length} invisible chars`);
+                const decodedText = decoded || (group.length === 1 ? (group[0].detail || group[0].name) : `${group.length} invisible chars`);
 
                 // Group severity
                 let severity;
@@ -607,7 +607,7 @@
                 if (highlightedNodeIds.has(nodeId)) continue;
 
                 const decoded = decodeGroup(group);
-                const decodedText = decoded || (group.length === 1 ? group[0].name : `${group.length} invisible chars`);
+                const decodedText = decoded || (group.length === 1 ? (group[0].detail || group[0].name) : `${group.length} invisible chars`);
                 let severity;
                 if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) severity = 'critical';
                 else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) severity = 'high';

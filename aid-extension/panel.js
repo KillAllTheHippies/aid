@@ -166,15 +166,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>`;
 
             for (const d of items) {
+                // Show detail line if it adds info beyond the code point
                 const detailLine = d.detail && d.detail !== d.codePoints?.[0]
                     ? `<div class="detection-card-detail">${esc(d.detail)}</div>`
                     : '';
+                // Show code point subtitle for single-char detections
+                const codePointLine = d.groupSize === 1 && d.codePoints?.[0]
+                    ? `<div class="detection-card-detail" style="opacity:0.6;font-family:monospace;">${esc(d.codePoints[0])}</div>`
+                    : '';
+                // Only show decoded line when it differs from both name and code point
+                const showDecoded = d.decoded
+                    && d.decoded !== d.charName
+                    && d.decoded !== d.codePoints?.[0];
                 html += `<div class="detection-card">
                     <div class="detection-card-header">
                         <span class="detection-card-type">${esc(d.charName)}</span>
                         <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
-                    </div>${detailLine}
-                    ${d.decoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
+                    </div>${codePointLine}${detailLine}
+                    ${showDecoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
                     <div class="detection-card-context">${esc(d.context)}</div>
                     <button class="detection-jump" data-node-id="${d.nodeId}">Jump to location ↗</button>
                 </div>`;
