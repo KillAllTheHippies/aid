@@ -44,14 +44,11 @@
                 <div class="category-grid" id="category-grid"></div>
             </div>
 
-            <!-- Active Filters -->
+            <!-- Filters -->
             <div class="panel-section" id="active-filters-section">
-                <div class="section-header">⚙️ Filters</div>
-                <div id="active-filters-content"></div>
-
-                <details class="panel-filter-drawer" id="filter-drawer">
-                    <summary class="panel-filter-drawer-label">Edit filters</summary>
-                    <div class="panel-filter-drawer-body">
+                <details class="panel-filter-toggle" id="filter-toggle" open>
+                    <summary class="section-header section-header-toggle">⚙️ Filters</summary>
+                    <div class="panel-filter-collapsible">
 
                         <!-- Search Filter Category Chips -->
                         <div class="search-filter-group" style="margin-bottom: 8px;">
@@ -88,47 +85,51 @@
                                 Arrow keys or type, click <span style="color: #4ade80">+</span> or <span
                                     style="color: #f87171">-</span> to toggle
                             </div>
-                            <div class="filter-chips-container" id="panel-filter-chips"></div>
-
-                            <!-- Sequence length drawer -->
-                            <details class="setting-drawer" id="panel-seq-length-drawer">
-                                <summary class="setting-drawer-label">Sequence length. <span id="panel-seq-preview"
-                                        class="seq-preview"></span></summary>
-                                <div class="setting-drawer-body">
-                                    <div class="setting-input-row">
-                                        <label for="panel-opt-min-seq">Min length</label>
-                                        <input type="number" id="panel-opt-min-seq" min="1" value="1"
-                                            class="setting-number">
-                                    </div>
-                                    <div class="setting-input-row">
-                                        <label for="panel-opt-max-seq">Max length</label>
-                                        <input type="number" id="panel-opt-max-seq" min="0" value="0"
-                                            placeholder="0 = no limit" class="setting-number">
-                                    </div>
-                                    <div class="setting-hint">0 = no limit. Filters consecutive runs by length.</div>
-                                </div>
-                            </details>
                         </div>
-
-                        <!-- Detection Toggles -->
-                        <label class="setting-row">
-                            <input type="checkbox" id="panel-opt-nbsp">
-                            <span>Detect NBSP (U+00A0)</span>
-                        </label>
-                        <label class="setting-row">
-                            <input type="checkbox" id="panel-opt-confusable">
-                            <span>Detect confusable spaces</span>
-                        </label>
-                        <label class="setting-row">
-                            <input type="checkbox" id="panel-opt-cc">
-                            <span>Detect control chars (Cc)</span>
-                        </label>
-                        <label class="setting-row">
-                            <input type="checkbox" id="panel-opt-zs">
-                            <span>Detect space separators (Zs)</span>
-                        </label>
                     </div>
                 </details>
+
+                <!-- Always visible: active filter chips + sequence length -->
+                <div class="panel-filter-persistent">
+                    <div class="filter-chips-container" id="panel-filter-chips"></div>
+
+                    <details class="setting-drawer" id="panel-seq-length-drawer">
+                        <summary class="setting-drawer-label">Sequence length. <span id="panel-seq-preview"
+                                class="seq-preview"></span></summary>
+                        <div class="setting-drawer-body">
+                            <div class="setting-input-row">
+                                <label for="panel-opt-min-seq">Min length</label>
+                                <input type="number" id="panel-opt-min-seq" min="1" value="1" class="setting-number">
+                            </div>
+                            <div class="setting-input-row">
+                                <label for="panel-opt-max-seq">Max length</label>
+                                <input type="number" id="panel-opt-max-seq" min="0" value="0" placeholder="0 = no limit"
+                                    class="setting-number">
+                            </div>
+                            <div class="setting-hint">0 = no limit. Filters consecutive runs by length.</div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Collapsible: Detection Toggles (collapses with the header) -->
+                <div class="panel-filter-toggles" id="panel-filter-toggles">
+                    <label class="setting-row">
+                        <input type="checkbox" id="panel-opt-nbsp">
+                        <span>Detect NBSP (U+00A0)</span>
+                    </label>
+                    <label class="setting-row">
+                        <input type="checkbox" id="panel-opt-confusable">
+                        <span>Detect confusable spaces</span>
+                    </label>
+                    <label class="setting-row">
+                        <input type="checkbox" id="panel-opt-cc">
+                        <span>Detect control chars (Cc)</span>
+                    </label>
+                    <label class="setting-row">
+                        <input type="checkbox" id="panel-opt-zs">
+                        <span>Detect space separators (Zs)</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Detections -->

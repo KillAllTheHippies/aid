@@ -416,38 +416,46 @@ body {
 
 /* ─── Panel Filter Drawer ────────────────────────────────────────────────── */
 
-.panel-filter-drawer {
-    margin-top: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.02);
+/* ─── Panel Filter Toggle ────────────────────────────────────────────────── */
+
+.panel-filter-toggle {
+    border: none;
 }
 
-.panel-filter-drawer-label {
-    padding: 8px 10px;
-    font-size: 11px;
-    color: #888;
+.section-header-toggle {
     cursor: pointer;
     list-style: none;
     user-select: none;
 }
 
-.panel-filter-drawer-label::before {
-    content: '▸ ';
+.section-header-toggle::before {
+    content: '▾ ';
     display: inline-block;
     transition: transform 0.15s;
+    font-size: 10px;
+    margin-right: 2px;
 }
 
-.panel-filter-drawer[open]>.panel-filter-drawer-label::before {
-    transform: rotate(90deg);
+.panel-filter-toggle:not([open])>.section-header-toggle::before {
+    content: '▸ ';
 }
 
-.panel-filter-drawer-label:hover {
-    color: #ccc;
+.panel-filter-collapsible {
+    margin-top: 8px;
 }
 
-.panel-filter-drawer-body {
-    padding: 8px 12px 12px;
+.panel-filter-persistent {
+    margin-top: 8px;
+}
+
+.panel-filter-toggles {
+    margin-top: 4px;
+    transition: max-height 0.15s ease;
+    overflow: hidden;
+}
+
+.panel-filter-toggles.collapsed {
+    display: none;
 }
 
 /* ─── Search Filter Group (shared with popup) ────────────────────────────── */

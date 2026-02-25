@@ -93,34 +93,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Active Filters summary (read-only chips above the drawer)
-        const activeFiltersContent = document.getElementById('active-filters-content');
-        if (r.settings) {
-            let filtersHtml = '';
-
-            // Render Include/Exclude Chips
-            if (r.settings.charFilters && r.settings.charFilters.length > 0) {
-                filtersHtml += `<div class="filter-chips-container" style="margin-bottom: 8px;">`;
-                r.settings.charFilters.forEach(filter => {
-                    const typeSymbol = filter.type === 'include' ? '+' : '−';
-                    filtersHtml += `
-                        <div class="filter-chip" style="cursor: default;">
-                            <div class="filter-chip-toggle" data-type="${filter.type}" style="cursor: default;" title="${filter.type === 'include' ? 'Include' : 'Exclude'}">${typeSymbol}</div>
-                            <div class="filter-chip-label">${esc(filter.id)}</div>
-                        </div>`;
-                });
-                filtersHtml += `</div>`;
-            }
-
-            // Render Sequence Limits
-            const min = r.settings.minSeqLength ?? 1;
-            const max = r.settings.maxSeqLength ?? 0;
-            filtersHtml += `<div style="font-size: 11px; color: #aaa; margin-top: 4px; padding-left: 4px; font-family: monospace;">` +
-                `Sequence limits&nbsp; ▶ &nbsp;Min: <span style="color:#fff">${min}</span> &nbsp;Max: <span style="color:#fff">${max === 0 ? '∞' : max}</span>` +
-                `</div>`;
-
-            activeFiltersContent.innerHTML = filtersHtml;
-        }
+        // Sync drawer controls with scan results settings
+        if (r.settings) loadFilterSettings();
 
         // Detections
         renderDetections(r.detections);
@@ -218,7 +192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     try { knownChars = getAllKnownCharacters(); } catch { /* */ }
 
     // Search filter category toggles
-    const searchFilterChips = document.querySelectorAll('#filter-drawer .search-filter-chip');
+    // Sync checkbox toggles visibility with the details toggle
+    const filterToggle = document.getElementById('filter-toggle');
+    const filterTogglesDiv = document.getElementById('panel-filter-toggles');
+    filterToggle.addEventListener('toggle', () => {
+        filterTogglesDiv.classList.toggle('collapsed', !filterToggle.open);
+    });
+
+    const searchFilterChips = document.querySelectorAll('#active-filters-section .search-filter-chip');
     const categoryStates = {};
 
     searchFilterChips.forEach(chip => {
