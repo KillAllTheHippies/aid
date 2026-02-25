@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optAutoScan = document.getElementById('opt-autoscan');
     const filterInput = document.getElementById('filter-input');
     const filterDropdown = document.getElementById('filter-dropdown');
+    const optFuzzySearch = document.getElementById('opt-fuzzy-search');
     const filterChips = document.getElementById('filter-chips');
     const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { settings } = await chrome.runtime.sendMessage({ action: 'getSettings' });
     optAutoScan.checked = settings.autoScan || false;
     let charFilters = settings.charFilters || [];
-    renderChips();
+    optFuzzySearch.checked = settings.fuzzySearch ?? true;
     optNbsp.checked = settings.detectNbsp || false;
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const s = {
             autoScan: optAutoScan.checked,
             charFilters: charFilters,
+            fuzzySearch: optFuzzySearch.checked,
             detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
@@ -90,192 +92,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optNbsp, optConfusable, optCc, optZs].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Filter Chips & Autocomplete ────────────────────────────────
 
-    let knownChars = [];
-    try {
-        knownChars = getAllKnownCharacters();
-    } catch (e) { /* might fail if unicode-chars.js isn't loaded properly in some environments */ }
+    // ─── Filter UI Initialization ─────────────────────────────────────────────
 
-    // ─── Search Filter Category Toggles ─────────────────────────────
-
-    const searchFilterChips = document.querySelectorAll('.search-filter-chip');
-    const categoryStates = {}; // { invisible: 'include', variation: 'include', ... }
-
-    searchFilterChips.forEach(chip => {
-        const cat = chip.dataset.category;
-        categoryStates[cat] = chip.dataset.state;
-
-        chip.addEventListener('click', () => {
-            const newState = chip.dataset.state === 'include' ? 'exclude' : 'include';
-            chip.dataset.state = newState;
-            categoryStates[cat] = newState;
-            chip.querySelector('.sf-toggle').textContent = newState === 'include' ? '+' : '\u2212';
-            // Re-filter the dropdown if it's open
-            triggerDropdownRefresh();
-        });
-    });
-
-    function getFilteredKnownChars(query) {
-        // First filter by enabled categories
-        const enabledCategories = Object.entries(categoryStates)
-            .filter(([, state]) => state === 'include')
-            .map(([cat]) => cat);
-
-        return knownChars.filter(c => {
-            // Category filter
-            if (!enabledCategories.includes(c.searchCategory)) return false;
-            // Text query filter
-            if (query) {
-                return c.name.toLowerCase().includes(query) ||
-                    c.codeStr.toLowerCase().includes(query);
-            }
-            return true;
-        }).slice(0, 500);
-    }
-
-    function triggerDropdownRefresh() {
-        if (!filterDropdown.classList.contains('show')) return;
-        const query = filterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    }
-
-    function renderChips() {
-        filterChips.innerHTML = '';
-        charFilters.forEach((filter, index) => {
-            const chip = document.createElement('div');
-            chip.className = 'filter-chip';
-            chip.dataset.type = filter.type;
-
-            const toggle = document.createElement('div');
-            toggle.className = 'filter-chip-toggle';
-            toggle.dataset.type = filter.type;
-            toggle.textContent = filter.type === 'include' ? '+' : (filter.type === 'exclude' ? '−' : '×');
-            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : (filter.type === 'exclude' ? 'Exclude (Ignore)' : 'Disabled');
-            toggle.addEventListener('click', () => {
-                if (filter.type === 'exclude') filter.type = 'disabled';
-                else if (filter.type === 'disabled') filter.type = 'include';
-                else filter.type = 'exclude';
-                renderChips();
-                saveSettings();
-            });
-
-            const label = document.createElement('div');
-            label.className = 'filter-chip-label';
-            label.textContent = filter.id;
-
-            const remove = document.createElement('div');
-            remove.className = 'filter-chip-remove';
-            remove.textContent = '×';
-            remove.addEventListener('click', () => {
-                charFilters.splice(index, 1);
-                renderChips();
-                saveSettings();
-            });
-
-            chip.appendChild(toggle);
-            chip.appendChild(label);
-            chip.appendChild(remove);
-            filterChips.appendChild(chip);
-        });
-    }
-
-    let currentFocus = -1;
-    let currentMatches = [];
-
-    function renderDropdown(matches) {
-        currentMatches = matches;
-        currentFocus = -1;
-        filterDropdown.innerHTML = '';
-        if (matches.length === 0) {
-            filterDropdown.classList.remove('show');
-            return;
-        }
-
-        matches.forEach((match, idx) => {
-            const item = document.createElement('div');
-            item.className = 'dropdown-item';
-            item.id = `dropdown-item-${idx}`;
-
-            const codeSpan = document.createElement('span');
-            codeSpan.className = 'dropdown-item-code';
-            codeSpan.textContent = match.codeStr;
-
-            item.appendChild(codeSpan);
-            item.appendChild(document.createTextNode(match.name));
-
-            item.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                addFilter(match);
-            });
-
-            filterDropdown.appendChild(item);
-        });
-        filterDropdown.classList.add('show');
-    }
-
-    function addFilter(match) {
-        if (!charFilters.find(f => f.id === match.codeStr)) {
-            charFilters.push({ id: match.codeStr, type: 'exclude' });
-            renderChips();
+    const filterUI = initFilterUI({
+        inputEl: filterInput,
+        dropdownEl: filterDropdown,
+        chipsContainerEl: filterChips,
+        categoryChips: document.querySelectorAll('.search-filter-chip'),
+        fuzzyToggleEl: optFuzzySearch,
+        initialFilters: charFilters,
+        onFilterChange: (newFilters) => {
+            charFilters = newFilters;
             saveSettings();
         }
-        filterInput.value = '';
-        filterDropdown.classList.remove('show');
-        filterInput.focus();
-    }
-
-    function setActiveItem(items) {
-        if (!items || items.length === 0) return;
-        Array.from(items).forEach(item => item.classList.remove('active'));
-        if (currentFocus >= items.length) currentFocus = 0;
-        if (currentFocus < 0) currentFocus = items.length - 1;
-        items[currentFocus].classList.add('active');
-        items[currentFocus].scrollIntoView({ block: 'nearest' });
-    }
-
-    filterInput.addEventListener('keydown', (e) => {
-        const items = filterDropdown.querySelectorAll('.dropdown-item');
-        if (!filterDropdown.classList.contains('show') || items.length === 0) return;
-
-        if (e.key === 'ArrowDown') {
-            currentFocus++;
-            setActiveItem(items);
-        } else if (e.key === 'ArrowUp') {
-            currentFocus--;
-            setActiveItem(items);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentFocus > -1) {
-                items[currentFocus].dispatchEvent(new MouseEvent('mousedown'));
-            } else if (items.length === 1) {
-                items[0].dispatchEvent(new MouseEvent('mousedown'));
-            }
-        }
-    });
-
-    filterInput.addEventListener('input', () => {
-        const query = filterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    filterInput.addEventListener('focus', () => {
-        const query = filterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    filterInput.addEventListener('click', () => {
-        if (!filterDropdown.classList.contains('show')) {
-            const query = filterInput.value.trim().toLowerCase();
-            renderDropdown(getFilteredKnownChars(query));
-        }
-    });
-
-    filterInput.addEventListener('blur', () => {
-        filterDropdown.classList.remove('show');
     });
 
     // ─── Scan Button ────────────────────────────────────────────────

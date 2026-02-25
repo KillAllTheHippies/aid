@@ -234,6 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelFilterInput = document.getElementById('panel-filter-input');
     const panelFilterDropdown = document.getElementById('panel-filter-dropdown');
     const panelFilterChips = document.getElementById('panel-filter-chips');
+    const panelOptFuzzySearch = document.getElementById('panel-opt-fuzzy-search');
     const panelOptNbsp = document.getElementById('panel-opt-nbsp');
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
@@ -245,9 +246,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let charFilters = [];
 
-    // Load known characters for autocomplete
-    let knownChars = [];
-    try { knownChars = getAllKnownCharacters(); } catch { /* */ }
+    // ─── Filter UI Initialization ─────────────────────────────────────────────
+
+    const filterUI = initFilterUI({
+        inputEl: panelFilterInput,
+        dropdownEl: panelFilterDropdown,
+        chipsContainerEl: panelFilterChips,
+        categoryChips: document.querySelectorAll('#active-filters-section .search-filter-chip'),
+        fuzzyToggleEl: panelOptFuzzySearch,
+        initialFilters: charFilters,
+        onFilterChange: (newFilters) => {
+            charFilters = newFilters;
+            saveFilterSettings();
+        }
+    });
 
     // Search filter category toggles
     // Sync checkbox toggles visibility with the details toggle
@@ -255,178 +267,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterTogglesDiv = document.getElementById('panel-filter-toggles');
     filterToggle.addEventListener('toggle', () => {
         filterTogglesDiv.classList.toggle('collapsed', !filterToggle.open);
-    });
-
-    const searchFilterChips = document.querySelectorAll('#active-filters-section .search-filter-chip');
-    const categoryStates = {};
-
-    searchFilterChips.forEach(chip => {
-        const cat = chip.dataset.category;
-        categoryStates[cat] = chip.dataset.state;
-
-        chip.addEventListener('click', () => {
-            const newState = chip.dataset.state === 'include' ? 'exclude' : 'include';
-            chip.dataset.state = newState;
-            categoryStates[cat] = newState;
-            chip.querySelector('.sf-toggle').textContent = newState === 'include' ? '+' : '\u2212';
-            triggerDropdownRefresh();
-        });
-    });
-
-    function getFilteredKnownChars(query) {
-        const enabledCategories = Object.entries(categoryStates)
-            .filter(([, state]) => state === 'include')
-            .map(([cat]) => cat);
-
-        return knownChars.filter(c => {
-            if (!enabledCategories.includes(c.searchCategory)) return false;
-            if (query) {
-                return c.name.toLowerCase().includes(query) ||
-                    c.codeStr.toLowerCase().includes(query);
-            }
-            return true;
-        }).slice(0, 500);
-    }
-
-    function triggerDropdownRefresh() {
-        if (!panelFilterDropdown.classList.contains('show')) return;
-        const query = panelFilterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    }
-
-    function renderFilterChips() {
-        panelFilterChips.innerHTML = '';
-        charFilters.forEach((filter, index) => {
-            const chip = document.createElement('div');
-            chip.className = 'filter-chip';
-            chip.dataset.type = filter.type;
-
-            const toggle = document.createElement('div');
-            toggle.className = 'filter-chip-toggle';
-            toggle.dataset.type = filter.type;
-            toggle.textContent = filter.type === 'include' ? '+' : (filter.type === 'exclude' ? '−' : '×');
-            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : (filter.type === 'exclude' ? 'Exclude (Ignore)' : 'Disabled');
-            toggle.addEventListener('click', () => {
-                if (filter.type === 'exclude') filter.type = 'disabled';
-                else if (filter.type === 'disabled') filter.type = 'include';
-                else filter.type = 'exclude';
-                renderFilterChips();
-                saveFilterSettings();
-            });
-
-            const label = document.createElement('div');
-            label.className = 'filter-chip-label';
-            label.textContent = filter.id;
-
-            const remove = document.createElement('div');
-            remove.className = 'filter-chip-remove';
-            remove.textContent = '×';
-            remove.addEventListener('click', () => {
-                charFilters.splice(index, 1);
-                renderFilterChips();
-                saveFilterSettings();
-            });
-
-            chip.appendChild(toggle);
-            chip.appendChild(label);
-            chip.appendChild(remove);
-            panelFilterChips.appendChild(chip);
-        });
-    }
-
-    let currentFocus = -1;
-    let currentMatches = [];
-
-    function renderDropdown(matches) {
-        currentMatches = matches;
-        currentFocus = -1;
-        panelFilterDropdown.innerHTML = '';
-        if (matches.length === 0) {
-            panelFilterDropdown.classList.remove('show');
-            return;
-        }
-
-        matches.forEach((match, idx) => {
-            const item = document.createElement('div');
-            item.className = 'dropdown-item';
-            item.id = `panel-dropdown-item-${idx}`;
-
-            const codeSpan = document.createElement('span');
-            codeSpan.className = 'dropdown-item-code';
-            codeSpan.textContent = match.codeStr;
-
-            item.appendChild(codeSpan);
-            item.appendChild(document.createTextNode(match.name));
-
-            item.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                addFilter(match);
-            });
-
-            panelFilterDropdown.appendChild(item);
-        });
-        panelFilterDropdown.classList.add('show');
-    }
-
-    function addFilter(match) {
-        if (!charFilters.find(f => f.id === match.codeStr)) {
-            charFilters.push({ id: match.codeStr, type: 'exclude' });
-            renderFilterChips();
-            saveFilterSettings();
-        }
-        panelFilterInput.value = '';
-        panelFilterDropdown.classList.remove('show');
-        panelFilterInput.focus();
-    }
-
-    function setActiveItem(items) {
-        if (!items || items.length === 0) return;
-        Array.from(items).forEach(item => item.classList.remove('active'));
-        if (currentFocus >= items.length) currentFocus = 0;
-        if (currentFocus < 0) currentFocus = items.length - 1;
-        items[currentFocus].classList.add('active');
-        items[currentFocus].scrollIntoView({ block: 'nearest' });
-    }
-
-    panelFilterInput.addEventListener('keydown', (e) => {
-        const items = panelFilterDropdown.querySelectorAll('.dropdown-item');
-        if (!panelFilterDropdown.classList.contains('show') || items.length === 0) return;
-
-        if (e.key === 'ArrowDown') {
-            currentFocus++;
-            setActiveItem(items);
-        } else if (e.key === 'ArrowUp') {
-            currentFocus--;
-            setActiveItem(items);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentFocus > -1) {
-                items[currentFocus].dispatchEvent(new MouseEvent('mousedown'));
-            } else if (items.length === 1) {
-                items[0].dispatchEvent(new MouseEvent('mousedown'));
-            }
-        }
-    });
-
-    panelFilterInput.addEventListener('input', () => {
-        const query = panelFilterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    panelFilterInput.addEventListener('focus', () => {
-        const query = panelFilterInput.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    panelFilterInput.addEventListener('click', () => {
-        if (!panelFilterDropdown.classList.contains('show')) {
-            const query = panelFilterInput.value.trim().toLowerCase();
-            renderDropdown(getFilteredKnownChars(query));
-        }
-    });
-
-    panelFilterInput.addEventListener('blur', () => {
-        panelFilterDropdown.classList.remove('show');
     });
 
     function updateSeqPreview() {
@@ -443,6 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const s = {
             autoScan: false, // Don't change autoScan from panel
             charFilters: charFilters,
+            fuzzySearch: panelOptFuzzySearch.checked,
             detectNbsp: panelOptNbsp.checked,
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
@@ -466,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox & number input handlers
-    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs].forEach(el =>
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
@@ -477,12 +318,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const settings = resp?.settings || {};
         charFilters = settings.charFilters || [];
         panelOptNbsp.checked = settings.detectNbsp || false;
+        panelOptFuzzySearch.checked = settings.fuzzySearch ?? true;
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;
         panelOptCc.checked = settings.detectControlChars || false;
         panelOptZs.checked = settings.detectSpaceSeparators || false;
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
-        renderFilterChips();
+        if (typeof filterUI !== 'undefined') filterUI.updateFilters(charFilters);
         updateSeqPreview();
     }
 

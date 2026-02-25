@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AID – Detection Report</title>
+    <link rel="stylesheet" href="shared.css">
     <link rel="stylesheet" href="panel.css">
 </head>
 
@@ -89,78 +90,86 @@
                                 <div class="filter-dropdown" id="panel-filter-dropdown"></div>
                             </div>
                             <div class="filter-dropdown-hint"
-                                style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace;">
-                                Arrow keys or type, click <span style="color: #4ade80">+</span> or <span
-                                    style="color: #f87171">-</span> to toggle
+                                style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; display: flex; justify-content: space-between; align-items: center;">
+                                <span>Arrow keys or type, click <span style="color: #4ade80">+</span> or <span
+                                        style="color: #f87171">-</span> to toggle</span>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"
+                                    title="Match all words anywhere in name or code">
+                                    <input type="checkbox" id="panel-opt-fuzzy-search" style="margin: 0;"> Fuzzy
+                                </label>
                             </div>
                         </div>
                     </div>
-                </details>
 
-                <!-- Always visible: active filter chips + sequence length -->
-                <div class="panel-filter-persistent">
-                    <div class="filter-chips-container" id="panel-filter-chips"></div>
+                    <!-- Detection Checkboxes -->
+                    <div class="panel-filter-toggles" id="panel-filter-toggles" style="margin-top: 8px;">
+                        <label class="setting-row">
+                            <input type="checkbox" id="panel-opt-nbsp">
+                            <span>Detect NBSP (U+00A0)</span>
+                        </label>
+                        <label class="setting-row">
+                            <input type="checkbox" id="panel-opt-confusable">
+                            <span>Detect confusable spaces</span>
+                        </label>
+                        <label class="setting-row">
+                            <input type="checkbox" id="panel-opt-cc">
+                            <span>Detect control chars (Cc)</span>
+                        </label>
+                        <label class="setting-row">
+                            <input type="checkbox" id="panel-opt-zs">
+                            <span>Detect space separators (Zs)</span>
+                        </label>
+                    </div>
+            </div>
+            </details>
 
-                    <details class="setting-drawer" id="panel-seq-length-drawer">
-                        <summary class="setting-drawer-label">Sequence length. <span id="panel-seq-preview"
-                                class="seq-preview"></span></summary>
-                        <div class="setting-drawer-body">
-                            <div class="setting-input-row">
-                                <label for="panel-opt-min-seq">Min length</label>
-                                <input type="number" id="panel-opt-min-seq" min="1" value="1" class="setting-number">
-                            </div>
-                            <div class="setting-input-row">
-                                <label for="panel-opt-max-seq">Max length</label>
-                                <input type="number" id="panel-opt-max-seq" min="0" value="0" placeholder="0 = no limit"
-                                    class="setting-number">
-                            </div>
-                            <div class="setting-hint">0 = no limit. Filters consecutive runs by length.</div>
+            <!-- Always visible: active filter chips + sequence length -->
+            <div class="panel-filter-persistent">
+                <div class="filter-chips-container" id="panel-filter-chips"></div>
+
+                <details class="setting-drawer" id="panel-seq-length-drawer">
+                    <summary class="setting-drawer-label">Sequence length. <span id="panel-seq-preview"
+                            class="seq-preview"></span></summary>
+                    <div class="setting-drawer-body">
+                        <div class="setting-input-row">
+                            <label for="panel-opt-min-seq">Min length</label>
+                            <input type="number" id="panel-opt-min-seq" min="1" value="1" class="setting-number">
                         </div>
-                    </details>
-                </div>
-
-                <!-- Collapsible: Detection Toggles (collapses with the header) -->
-                <div class="panel-filter-toggles" id="panel-filter-toggles">
-                    <label class="setting-row">
-                        <input type="checkbox" id="panel-opt-nbsp">
-                        <span>Detect NBSP (U+00A0)</span>
-                    </label>
-                    <label class="setting-row">
-                        <input type="checkbox" id="panel-opt-confusable">
-                        <span>Detect confusable spaces</span>
-                    </label>
-                    <label class="setting-row">
-                        <input type="checkbox" id="panel-opt-cc">
-                        <span>Detect control chars (Cc)</span>
-                    </label>
-                    <label class="setting-row">
-                        <input type="checkbox" id="panel-opt-zs">
-                        <span>Detect space separators (Zs)</span>
-                    </label>
-                </div>
+                        <div class="setting-input-row">
+                            <label for="panel-opt-max-seq">Max length</label>
+                            <input type="number" id="panel-opt-max-seq" min="0" value="0" placeholder="0 = no limit"
+                                class="setting-number">
+                        </div>
+                        <div class="setting-hint">0 = no limit. Filters consecutive runs by length.</div>
+                    </div>
+                </details>
             </div>
 
-            <!-- Detections -->
-            <div class="panel-section">
-                <div class="section-header">📋 Detections</div>
-                <div id="detections-list"></div>
-            </div>
 
-            <!-- Tag Runs -->
-            <div class="panel-section" id="tag-runs-section" style="display: none;">
-                <div class="section-header">🏷️ Decoded Unicode Tag Runs</div>
-                <div class="tag-runs" id="tag-runs"></div>
-            </div>
-
-            <!-- Export -->
-            <div class="panel-section panel-export">
-                <button class="btn-export" id="export-json">Export JSON</button>
-                <button class="btn-export" id="export-csv">Export CSV</button>
-            </div>
         </div>
+
+        <!-- Detections -->
+        <div class="panel-section">
+            <div class="section-header">📋 Detections</div>
+            <div id="detections-list"></div>
+        </div>
+
+        <!-- Tag Runs -->
+        <div class="panel-section" id="tag-runs-section" style="display: none;">
+            <div class="section-header">🏷️ Decoded Unicode Tag Runs</div>
+            <div class="tag-runs" id="tag-runs"></div>
+        </div>
+
+        <!-- Export -->
+        <div class="panel-section panel-export">
+            <button class="btn-export" id="export-json">Export JSON</button>
+            <button class="btn-export" id="export-csv">Export CSV</button>
+        </div>
+    </div>
     </div>
 
     <script src="unicode-chars.js"></script>
+    <script src="shared-ui.js"></script>
     <script src="panel.js"></script>
 </body>
 

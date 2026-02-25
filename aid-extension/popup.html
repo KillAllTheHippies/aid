@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AID – ASCII Smuggling Detector</title>
+  <link rel="stylesheet" href="shared.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 
@@ -88,9 +89,13 @@
             <div class="filter-dropdown" id="filter-dropdown"></div>
           </div>
           <div class="filter-dropdown-hint"
-            style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace;">
-            Arrow keys or type, click <span style="color: #4ade80">+</span> or <span style="color: #f87171">-</span> to
-            toggle
+            style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; display: flex; justify-content: space-between; align-items: center;">
+            <span>Arrow keys or type, click <span style="color: #4ade80">+</span> or <span
+                style="color: #f87171">-</span> to toggle</span>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"
+              title="Match all words anywhere in name or code">
+              <input type="checkbox" id="opt-fuzzy-search" style="margin: 0;"> Fuzzy
+            </label>
           </div>
           <div class="filter-chips-container" id="filter-chips"></div>
           <details class="setting-drawer" id="seq-length-drawer">
@@ -131,6 +136,7 @@
   </div>
 
   <script src="unicode-chars.js"></script>
+  <script src="shared-ui.js"></script>
   <script src="popup.js"></script>
 </body>
 
