@@ -148,14 +148,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         charFilters.forEach((filter, index) => {
             const chip = document.createElement('div');
             chip.className = 'filter-chip';
+            chip.dataset.type = filter.type;
 
             const toggle = document.createElement('div');
             toggle.className = 'filter-chip-toggle';
             toggle.dataset.type = filter.type;
-            toggle.textContent = filter.type === 'include' ? '+' : '−';
-            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : 'Exclude (Ignore)';
+            toggle.textContent = filter.type === 'include' ? '+' : (filter.type === 'exclude' ? '−' : '×');
+            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : (filter.type === 'exclude' ? 'Exclude (Ignore)' : 'Disabled');
             toggle.addEventListener('click', () => {
-                filter.type = filter.type === 'include' ? 'exclude' : 'include';
+                if (filter.type === 'exclude') filter.type = 'disabled';
+                else if (filter.type === 'disabled') filter.type = 'include';
+                else filter.type = 'exclude';
                 renderChips();
                 saveSettings();
             });
