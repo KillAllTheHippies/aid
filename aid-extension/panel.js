@@ -18,6 +18,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentResults = null;
 
+    // Header Export Dropdown Menu
+    const exportBtn = document.getElementById('header-export-btn');
+    const exportMenu = document.getElementById('header-export-menu');
+
+    exportBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        exportMenu.classList.toggle('hidden');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!exportMenu.classList.contains('hidden') && !exportMenu.contains(e.target) && e.target !== exportBtn) {
+            exportMenu.classList.add('hidden');
+        }
+    });
+
+    exportMenu.addEventListener('click', (e) => {
+        if (e.target.classList.contains('export-menu-item')) {
+            const format = e.target.dataset.format;
+            if (format === 'csv') {
+                document.getElementById('export-csv').click();
+            } else if (format === 'json') {
+                document.getElementById('export-json').click();
+            }
+            exportMenu.classList.add('hidden');
+        }
+    });
+
     // Close button
     document.getElementById('close-btn').addEventListener('click', () => window.close());
 
@@ -148,10 +177,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const showDecoded = d.decoded
                     && d.decoded !== d.charName
                     && d.decoded !== d.codePoints?.[0];
+
+                const copyText = d.decoded || d.codePoints?.[0] || d.charName;
+
                 html += `<div class="detection-card">
                     <div class="detection-card-header">
-                        <span class="detection-card-type">${esc(d.charName)}</span>
-                        <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
+                        <div class="detection-card-title">
+                            <span class="detection-card-type">${esc(d.charName)}</span>
+                            <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
+                        </div>
+                        <button class="detection-copy" data-copy-text="${esc(copyText)}" title="Copy decoded text">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
                     </div>${codePointLine}${detailLine}
                     ${showDecoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
                     <div class="detection-card-context">${esc(d.context)}</div>
@@ -161,6 +198,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         detectionsList.innerHTML = html;
+
+        // Copy handlers
+        detectionsList.querySelectorAll('.detection-copy').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const text = btn.dataset.copyText;
+                if (!text) return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="#00ff88" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                    }, 2000);
+                } catch (err) {
+                    console.error('AID: Failed to copy text:', err);
+                }
+            });
+        });
 
         // Jump handlers
         detectionsList.querySelectorAll('.detection-jump').forEach(btn => {

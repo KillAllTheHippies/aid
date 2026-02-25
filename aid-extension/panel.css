@@ -50,6 +50,56 @@ body {
     background-clip: text;
 }
 
+.panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-link {
+    color: #4ade80;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.header-link:hover {
+    text-decoration: underline;
+    color: #69f0ae;
+}
+
+.export-menu {
+    position: absolute;
+    top: 100%;
+    right: 32px;
+    margin-top: 6px;
+    background: #1a1a24;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 4px 0;
+    min-width: 80px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.export-menu.hidden {
+    display: none;
+}
+
+.export-menu-item {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ccc;
+    cursor: pointer;
+    text-align: left;
+}
+
+.export-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
 .panel-close {
     width: 28px;
     height: 28px;
@@ -249,8 +299,34 @@ body {
 .detection-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 6px;
+}
+
+.detection-card-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.detection-copy {
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+.detection-copy:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
 .detection-card-type {

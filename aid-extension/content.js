@@ -478,8 +478,27 @@
             if (!hl) return;
             e.preventDefault();
             e.stopPropagation();
+
             const marker = hl.querySelector('.aid-marker');
             if (!marker) return;
+
+            // Frictionless Copy
+            if (e.ctrlKey || e.metaKey) {
+                const textToCopy = hl.dataset.decoded || '';
+                navigator.clipboard.writeText(textToCopy).catch(err => console.warn('Copy failed:', err));
+
+                marker.textContent = '(Copied!)';
+                const originalColor = marker.style.color;
+                marker.style.color = '#00ff88';
+                setTimeout(() => {
+                    if (marker.textContent === '(Copied!)') {
+                        marker.textContent = marker.dataset.isExpanded === 'true' ? marker.dataset.expanded : marker.dataset.collapsed;
+                    }
+                    marker.style.color = originalColor;
+                }, 1000);
+                return;
+            }
+
             const expanded = marker.dataset.isExpanded === 'true';
             marker.textContent = expanded ? marker.dataset.collapsed : marker.dataset.expanded;
             marker.dataset.isExpanded = String(!expanded);
