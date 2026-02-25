@@ -529,7 +529,7 @@
 
         html += `
             <div class="aid-tooltip-divider"></div>
-            <div class="aid-tooltip-hint">Click to expand inline</div>`;
+            <div class="aid-tooltip-hint">Click to expand inline &bull; Ctrl+Click to copy</div>`;
 
         tooltipEl.innerHTML = html;
         tooltipEl.style.display = 'block';
