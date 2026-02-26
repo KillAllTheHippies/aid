@@ -2,3 +2,6 @@
 .env
 go/
 __pycache__/
+
+# Extension build output
+aid-extension/dist/
