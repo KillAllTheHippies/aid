@@ -301,6 +301,7 @@
             const d = decodeVSGroup(group);
             if (d) return d;
         }
+
         return null;
     }
 
@@ -379,9 +380,11 @@
                     // Build highlight wrapper
                     const span = document.createElement('span');
                     span.className = 'aid-hl';
+                    span.dataset.style = settings.highlightStyle || 'nimbus';
                     span.dataset.severity = severity;
                     span.dataset.decoded = decodedText;
                     span.dataset.nodeId = `aid-${nodeIdx}-${startIdx}`;
+                    span.dataset.rawChars = group.map(c => c.char).join('');
                     span.dataset.charCount = String(group.length);
                     span.dataset.charName = group.length === 1
                         ? group[0].name
@@ -603,6 +606,7 @@
                 decoded: d.decoded || null,
                 context,
                 category: d.category || '',
+                rawChars: d.rawChars || '',
             });
         }
 
@@ -655,9 +659,20 @@
                     decoded: decodedText,
                     context,
                     category: classifyCategory(group[0]),
+                    rawChars: group.map(c => c.char).join(''),
                 });
             }
         }
+
+        // Sort detections into exact document order to avoid reversed grouping
+        detections.sort((a, b) => {
+            const partsA = a.nodeId.split('-');
+            const partsB = b.nodeId.split('-');
+            // nodeId format: aid-{nodeIndex}-{charIndex}
+            const nodeDiff = parseInt(partsA[1], 10) - parseInt(partsB[1], 10);
+            if (nodeDiff !== 0) return nodeDiff;
+            return parseInt(partsA[2], 10) - parseInt(partsB[2], 10);
+        });
 
         return {
             url: location.href,

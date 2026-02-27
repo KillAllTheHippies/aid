@@ -155,14 +155,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Helper to format binary string into 8-bit blocks
+    function formatBinary(binaryStr) {
+        return (binaryStr.match(/.{1,8}/g) || []).join(' ');
+    }
+
     function renderDetections(detections) {
         if (!detections?.length) {
             detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
             return;
         }
 
+        // 1. Extract and aggregate Sneaky Bits by DOM Text Node (nodeIdx)
+        const sneakyMap = {};
+        const filteredDetections = [];
+
+        for (const d of detections) {
+            const raw = d.rawChars || '';
+            let binPartA = '';
+            let binPartB = '';
+            let hasNonVS = false;
+            for (const char of raw) {
+                if (char === '\uFE0E' || char === '\uFE0F') {
+                    const mappedA = sneakyBitConfig[char];
+                    binPartA += mappedA;
+                    binPartB += mappedA === '0' ? '1' : '0';
+                } else {
+                    hasNonVS = true;
+                    break;
+                }
+            }
+            if (raw.length > 0 && !hasNonVS) {
+                const nodeIdx = d.nodeId.split('-')[1];
+                if (!sneakyMap[nodeIdx]) {
+                    sneakyMap[nodeIdx] = { count: 0, binaryA: '', binaryB: '', nodeIds: [] };
+                }
+                sneakyMap[nodeIdx].binaryA += binPartA;
+                sneakyMap[nodeIdx].binaryB += binPartB;
+                sneakyMap[nodeIdx].nodeIds.push(d.nodeId);
+                sneakyMap[nodeIdx].count += raw.length;
+            } else {
+                filteredDetections.push(d);
+            }
+        }
+
         const groups = { critical: [], high: [], medium: [], info: [] };
-        for (const d of detections) (groups[d.severity] || groups.info).push(d);
+        for (const d of filteredDetections) (groups[d.severity] || groups.info).push(d);
 
         const labels = {
             critical: { emoji: '🔴', label: 'Critical' },
@@ -172,6 +210,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         let html = '';
+
+        for (const [nodeIdx, sg] of Object.entries(sneakyMap)) {
+            if (sg.count === 0) continue;
+
+            const showA = formatBinary(sg.binaryA);
+            const showB = formatBinary(sg.binaryB);
+
+            html += `<div class="detection-group-header">
+                <span class="severity-dot high"></span> 🕵️ Sneaky Bits Sequence (${sg.count} bits)
+            </div>
+            <div class="detection-card" style="border: 1px solid rgba(124, 58, 237, 0.4); background: rgba(124, 58, 237, 0.05);">
+                <div class="detection-card-header">
+                    <div class="detection-card-title">
+                        <span class="detection-card-type">VS-15/16 Payload</span>
+                        <span class="detection-card-count">${sg.count} bits / ${Math.floor(sg.count / 8)} bytes</span>
+                    </div>
+                </div>
+                <div style="padding:4px 0;">
+                    <strong style="color:#aaa;font-size:10px;">CONFIG A:</strong>
+                    <div class="detection-card-detail" style="opacity:0.8;font-family:monospace;word-break:break-all;margin-bottom:4px;">${esc(showA)}</div>
+                    <strong style="color:#aaa;font-size:10px;">CONFIG B (Inverted):</strong>
+                    <div class="detection-card-detail" style="opacity:0.8;font-family:monospace;word-break:break-all;">${esc(showB)}</div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:6px;">
+                    <button class="detection-copy" style="flex:1;justify-content:center;padding:4px;" data-copy-text="${esc(sg.binaryA)}" title="Copy Binary A">Copy A</button>
+                    <button class="detection-copy" style="flex:1;justify-content:center;padding:4px;" data-copy-text="${esc(sg.binaryB)}" title="Copy Binary B">Copy B</button>
+                </div>
+                ${sg.nodeIds.length > 0 ? `<button class="detection-jump" data-node-id="${sg.nodeIds[0]}" style="margin-top:6px;width:100%;">Jump to first bit ↗</button>` : ''}
+            </div>`;
+        }
+
         for (const [level, items] of Object.entries(groups)) {
             if (!items.length) continue;
             const { emoji, label } = labels[level];
@@ -257,10 +326,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelOptZs = document.getElementById('panel-opt-zs');
     const panelOptMinSeq = document.getElementById('panel-opt-min-seq');
     const panelOptMaxSeq = document.getElementById('panel-opt-max-seq');
+    const panelOptHlStyle = document.getElementById('panel-opt-hl-style');
     const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
     const panelSeqPreview = document.getElementById('panel-seq-preview');
 
     let charFilters = [];
+    let sneakyBitConfig = { '\uFE0E': '0', '\uFE0F': '1' };
+
+    function updateSneakyBitsUI() {
+        document.querySelectorAll('.sb-val-btn').forEach(btn => {
+            const char = btn.dataset.char;
+            const val = btn.dataset.val;
+            btn.classList.toggle('active', sneakyBitConfig[char] === val);
+        });
+    }
+
+    // Set up button handlers for sneaky bits
+    document.querySelectorAll('.sb-val-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const char = btn.dataset.char;
+            const val = btn.dataset.val;
+            sneakyBitConfig[char] = val;
+
+            // Auto flip the other one if needed to maintain alternating structure
+            const otherChar = char === '\uFE0E' ? '\uFE0F' : '\uFE0E';
+            if (sneakyBitConfig[otherChar] === val) {
+                sneakyBitConfig[otherChar] = val === '0' ? '1' : '0';
+            }
+
+            saveFilterSettings();
+        });
+    });
+
+    document.getElementById('sb-flip-btn')?.addEventListener('click', () => {
+        sneakyBitConfig['\uFE0E'] = sneakyBitConfig['\uFE0E'] === '0' ? '1' : '0';
+        sneakyBitConfig['\uFE0F'] = sneakyBitConfig['\uFE0F'] === '0' ? '1' : '0';
+        saveFilterSettings();
+    });
 
     // ─── Filter UI Initialization ─────────────────────────────────────────────
 
@@ -308,6 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             panelOptConfusable.checked !== false ||
             panelOptCc.checked !== false ||
             panelOptZs.checked !== false ||
+            panelOptHlStyle.value !== 'nimbus' ||
             (parseInt(panelOptMinSeq.value, 10) || 1) !== 1 ||
             (parseInt(panelOptMaxSeq.value, 10) || 0) !== 0;
 
@@ -324,6 +427,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
+            highlightStyle: panelOptHlStyle.value,
+            sneakyBitConfig: sneakyBitConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
         };
@@ -343,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox & number input handlers
-    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch, panelOptHlStyle].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
@@ -358,8 +463,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;
         panelOptCc.checked = settings.detectControlChars || false;
         panelOptZs.checked = settings.detectSpaceSeparators || false;
+        panelOptHlStyle.value = settings.highlightStyle || 'nimbus';
+        sneakyBitConfig = settings.sneakyBitConfig || { '\uFE0E': '0', '\uFE0F': '1' };
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
+        updateSneakyBitsUI();
         if (typeof filterUI !== 'undefined') filterUI.updateFilters(charFilters);
         updateSeqPreview();
     }

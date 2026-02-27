@@ -11,24 +11,55 @@
 }
 
 /* Severity colors */
-.aid-hl[data-severity="info"] {
+/* Classic style (original) */
+.aid-hl[data-style="classic"][data-severity="info"] {
   background: rgba(33, 150, 243, 0.12);
   box-shadow: 0 0 6px 1px rgba(33, 150, 243, 0.5);
 }
 
-.aid-hl[data-severity="medium"] {
+.aid-hl[data-style="classic"][data-severity="medium"] {
   background: rgba(255, 193, 7, 0.15);
   box-shadow: 0 0 6px 1px rgba(255, 193, 7, 0.6);
 }
 
-.aid-hl[data-severity="high"] {
+.aid-hl[data-style="classic"][data-severity="high"] {
   background: rgba(255, 152, 0, 0.15);
   box-shadow: 0 0 8px 2px rgba(255, 152, 0, 0.6);
 }
 
-.aid-hl[data-severity="critical"] {
+.aid-hl[data-style="classic"][data-severity="critical"] {
   background: rgba(244, 67, 54, 0.18);
   box-shadow: 0 0 10px 3px rgba(244, 67, 54, 0.7);
+}
+
+/* Nimbus style (new default) - inobtrusive halo */
+.aid-hl[data-style="nimbus"] {
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 0 4px currentColor;
+  border-bottom: 1px dashed currentColor;
+}
+
+.aid-hl[data-style="nimbus"][data-severity="info"] {
+  color: #2196f3;
+}
+
+.aid-hl[data-style="nimbus"][data-severity="medium"] {
+  color: #ffc107;
+}
+
+.aid-hl[data-style="nimbus"][data-severity="high"] {
+  color: #ff9800;
+}
+
+.aid-hl[data-style="nimbus"][data-severity="critical"] {
+  color: #f44336;
+}
+
+/* Legacy support (fallback) */
+.aid-hl:not([data-style]) {
+  background: rgba(255, 193, 7, 0.1);
+  box-shadow: 0 0 4px rgba(255, 193, 7, 0.4);
 }
 
 /* Hover glow */

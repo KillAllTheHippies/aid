@@ -104,8 +104,16 @@
                         </div>
                     </div>
 
-                    <!-- Detection Checkboxes -->
+                    <!-- Highlight Style & Detection Checkboxes -->
                     <div class="panel-filter-toggles" id="panel-filter-toggles" style="margin-top: 8px;">
+                        <label class="setting-row" style="margin-bottom: 4px;">
+                            <span style="font-size: 11px; color: #888;">Highlight Style:</span>
+                            <select id="panel-opt-hl-style" class="setting-select" style="margin-left: auto;">
+                                <option value="nimbus">Nimbus (Subtle)</option>
+                                <option value="classic">Classic (Solid)</option>
+                            </select>
+                        </label>
+
                         <label class="setting-row">
                             <input type="checkbox" id="panel-opt-nbsp">
                             <span>Detect NBSP (U+00A0)</span>
@@ -122,6 +130,29 @@
                             <input type="checkbox" id="panel-opt-zs">
                             <span>Detect space separators (Zs)</span>
                         </label>
+
+                        <!-- Sneaky Bits Configuration -->
+                        <div class="sneaky-bits-config"
+                            style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 500;">Sneaky Bits
+                                (VS-15/16) Mapping</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <div class="sb-assign-group">
+                                    <span class="sb-label">VS-15</span>
+                                    <button class="sb-val-btn active" id="sb-vs15-0" data-char="\uFE0E"
+                                        data-val="0">0</button>
+                                    <button class="sb-val-btn" id="sb-vs15-1" data-char="\uFE0E" data-val="1">1</button>
+                                </div>
+                                <div class="sb-assign-group">
+                                    <span class="sb-label">VS-16</span>
+                                    <button class="sb-val-btn" id="sb-vs16-0" data-char="\uFE0F" data-val="0">0</button>
+                                    <button class="sb-val-btn active" id="sb-vs16-1" data-char="\uFE0F"
+                                        data-val="1">1</button>
+                                </div>
+                            </div>
+                            <button id="sb-flip-btn" class="btn-secondary"
+                                style="width: 100%; font-size: 11px; padding: 4px;">Flip Configuration</button>
+                        </div>
                     </div>
             </div>
             </details>
