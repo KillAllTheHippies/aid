@@ -160,13 +160,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         return (binaryStr.match(/.{1,8}/g) || []).join(' ');
     }
 
+    // Helper to convert binary string to Hex
+    function toHex(binStr) {
+        if (!binStr) return '';
+        const bytes = binStr.match(/.{1,8}/g) || [];
+        return bytes.map(byte => {
+            const hex = parseInt(byte.padEnd(8, '0'), 2).toString(16).toUpperCase();
+            return hex.padStart(2, '0');
+        }).join(' ');
+    }
+
+    // Helper to decode binary string (8-bit ASCII/UTF-8)
+    // Returns full decoding, and optionally a "trimmed" version if it yields better results
+    function decodeBinary(binStr) {
+        if (!binStr || binStr.length < 8) return { full: '', printable: false };
+
+        function tryDecode(s) {
+            try {
+                const bytes = s.match(/.{8}/g) || [];
+                const chars = bytes.map(byte => {
+                    const code = parseInt(byte, 2);
+                    return (code >= 32 && code <= 126) ? String.fromCharCode(code) : '·';
+                });
+                const result = chars.join('');
+                const isPrintable = result.replace(/·/g, '').length > 0;
+                return { text: result, printable: isPrintable };
+            } catch (e) { return { text: '', printable: false }; }
+        }
+
+        const full = tryDecode(binStr);
+        const remainder = binStr.length % 8;
+        let trimmed = null;
+
+        if (remainder > 0) {
+            trimmed = tryDecode(binStr.slice(0, -remainder));
+        }
+
+        return {
+            full: full.text,
+            isFullPrintable: full.printable,
+            trimmed: trimmed?.text,
+            isTrimmedPrintable: trimmed?.printable,
+            hasTrailing: remainder > 0,
+            trailingCount: remainder
+        };
+    }
+
     function renderDetections(detections) {
         if (!detections?.length) {
             detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
             return;
         }
 
-        // 1. Extract and aggregate Sneaky Bits by DOM Text Node (nodeIdx)
+        // 1. Initialize Dynamic Payload Dropdowns
+        populateSbDropdowns(detections);
+        const { char0, char1 } = sbConfig;
+
+        // 2. Extract and aggregate Sneaky Bits by DOM Text Node (nodeIdx)
         const sneakyMap = {};
         const filteredDetections = [];
 
@@ -174,18 +224,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const raw = d.rawChars || '';
             let binPartA = '';
             let binPartB = '';
-            let hasNonVS = false;
-            for (const char of raw) {
-                if (char === '\uFE0E' || char === '\uFE0F') {
-                    const mappedA = sneakyBitConfig[char];
-                    binPartA += mappedA;
-                    binPartB += mappedA === '0' ? '1' : '0';
-                } else {
-                    hasNonVS = true;
-                    break;
+            let hasNonPayload = false;
+
+            if (char0 && char1 && char0 !== char1) {
+                for (const char of raw) {
+                    if (char === char0 || char === char1) {
+                        const mappedA = char === char0 ? '0' : '1';
+                        binPartA += mappedA;
+                        binPartB += mappedA === '0' ? '1' : '0';
+                    } else {
+                        hasNonPayload = true;
+                        break;
+                    }
                 }
+            } else {
+                hasNonPayload = true;
             }
-            if (raw.length > 0 && !hasNonVS) {
+
+            if (raw.length > 0 && !hasNonPayload) {
                 const nodeIdx = d.nodeId.split('-')[1];
                 if (!sneakyMap[nodeIdx]) {
                     sneakyMap[nodeIdx] = { count: 0, binaryA: '', binaryB: '', nodeIds: [] };
@@ -214,30 +270,64 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (const [nodeIdx, sg] of Object.entries(sneakyMap)) {
             if (sg.count === 0) continue;
 
+            const dName0 = sbChar0Select?.options[sbChar0Select.selectedIndex]?.text.split(' (')[0] || 'Char 0';
+            const dName1 = sbChar1Select?.options[sbChar1Select.selectedIndex]?.text.split(' (')[0] || 'Char 1';
+            const mappingDesc = `'0' = ${dName0}, '1' = ${dName1}`;
+
             const showA = formatBinary(sg.binaryA);
             const showB = formatBinary(sg.binaryB);
+            const hexA = toHex(sg.binaryA);
+            const hexB = toHex(sg.binaryB);
+
+            const decA = decodeBinary(sg.binaryA);
+            const decB = decodeBinary(sg.binaryB);
+
+            const renderConfig = (label, bin, hex, dec, isA) => {
+                const showDecoded = dec.isFullPrintable || dec.isTrimmedPrintable;
+                const activeDec = dec.isTrimmedPrintable && !dec.isFullPrintable ? dec.trimmed : dec.full;
+                const isTrimmedUsed = dec.isTrimmedPrintable && !dec.isFullPrintable;
+
+                return `
+                <div class="sb-payload-block" style="${isA ? 'margin-bottom: 12px;' : ''}">
+                    <div class="sb-payload-label">${label}</div>
+                    ${showDecoded ? `
+                    <div class="sb-decoded-box">
+                        <div class="sb-decoded-text">${esc(activeDec)}</div>
+                        <button class="detection-copy sb-copy-mini" data-copy-text="${esc(activeDec)}" title="Copy Decoded Text">
+                            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>` : ''}
+                    ${isTrimmedUsed ? `<div class="sb-hint">Displayed w/ trailing bits removed</div>` : ''}
+                    ${dec.hasTrailing && !isTrimmedUsed ? `<div class="sb-hint">Note: ${dec.trailingCount} trailing bits remaining</div>` : ''}
+                    
+                    <div class="sb-data-row">
+                        <span class="sb-data-type">HEX</span>
+                        <code class="sb-data-value">${esc(hex)}</code>
+                    </div>
+                    <div class="sb-data-row">
+                        <span class="sb-data-type">BIN</span>
+                        <code class="sb-data-value">${esc(formatBinary(bin))}</code>
+                    </div>
+                    <div style="display:flex;gap:4px;margin-top:6px;">
+                        <button class="detection-copy sb-btn-action" data-copy-text="${esc(bin)}" title="Copy Binary">Copy Bin</button>
+                        <button class="detection-copy sb-btn-action" data-copy-text="${esc(hex)}" title="Copy Hex">Copy Hex</button>
+                    </div>
+                </div>`;
+            };
 
             html += `<div class="detection-group-header">
                 <span class="severity-dot high"></span> 🕵️ Sneaky Bits Sequence (${sg.count} bits)
             </div>
-            <div class="detection-card" style="border: 1px solid rgba(124, 58, 237, 0.4); background: rgba(124, 58, 237, 0.05);">
+            <div class="detection-card sneaky-bits-card">
                 <div class="detection-card-header">
                     <div class="detection-card-title">
-                        <span class="detection-card-type">VS-15/16 Payload</span>
-                        <span class="detection-card-count">${sg.count} bits / ${Math.floor(sg.count / 8)} bytes</span>
+                        <span class="detection-card-type">Dynamic Payload</span>
+                        <span class="detection-card-count">${mappingDesc}</span>
                     </div>
                 </div>
-                <div style="padding:4px 0;">
-                    <strong style="color:#aaa;font-size:10px;">CONFIG A:</strong>
-                    <div class="detection-card-detail" style="opacity:0.8;font-family:monospace;word-break:break-all;margin-bottom:4px;">${esc(showA)}</div>
-                    <strong style="color:#aaa;font-size:10px;">CONFIG B (Inverted):</strong>
-                    <div class="detection-card-detail" style="opacity:0.8;font-family:monospace;word-break:break-all;">${esc(showB)}</div>
-                </div>
-                <div style="display:flex;gap:4px;margin-top:6px;">
-                    <button class="detection-copy" style="flex:1;justify-content:center;padding:4px;" data-copy-text="${esc(sg.binaryA)}" title="Copy Binary A">Copy A</button>
-                    <button class="detection-copy" style="flex:1;justify-content:center;padding:4px;" data-copy-text="${esc(sg.binaryB)}" title="Copy Binary B">Copy B</button>
-                </div>
-                ${sg.nodeIds.length > 0 ? `<button class="detection-jump" data-node-id="${sg.nodeIds[0]}" style="margin-top:6px;width:100%;">Jump to first bit ↗</button>` : ''}
+                ${renderConfig("CONFIGURATION A", sg.binaryA, hexA, decA, true)}
+                ${renderConfig("CONFIGURATION B (Inverted)", sg.binaryB, hexB, decB, false)}
+                ${sg.nodeIds.length > 0 ? `<button class="detection-jump" data-node-id="${sg.nodeIds[0]}" style="margin-top:10px;width:100%;">Jump to first bit ↗</button>` : ''}
             </div>`;
         }
 
@@ -330,37 +420,97 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
     const panelSeqPreview = document.getElementById('panel-seq-preview');
 
-    let charFilters = [];
-    let sneakyBitConfig = { '\uFE0E': '0', '\uFE0F': '1' };
+    const sbChar0Select = document.getElementById('sb-char-0-select');
+    const sbChar1Select = document.getElementById('sb-char-1-select');
+    const sbAutoHint = document.getElementById('sb-auto-suggest-hint');
 
-    function updateSneakyBitsUI() {
-        document.querySelectorAll('.sb-val-btn').forEach(btn => {
-            const char = btn.dataset.char;
-            const val = btn.dataset.val;
-            btn.classList.toggle('active', sneakyBitConfig[char] === val);
+    let charFilters = [];
+    let sbConfig = { char0: '', char1: '' };
+
+    function populateSbDropdowns(detections) {
+        if (!sbChar0Select || !sbChar1Select || !detections) return;
+
+        // Count frequencies of single characters
+        const charCounts = {};
+        const charNames = {};
+        let totalHiddenChars = 0;
+
+        for (const d of detections) {
+            const raw = d.rawChars || '';
+            for (const char of raw) {
+                charCounts[char] = (charCounts[char] || 0) + 1;
+                // Try to get a clean name for the single character
+                if (!charNames[char]) {
+                    charNames[char] = d.groupSize === 1 ? d.charName : (d.charName.includes(' ') ? d.charName.split(' ')[0] : d.charName);
+                }
+                totalHiddenChars++;
+            }
+        }
+
+        const sortedChars = Object.keys(charCounts).sort((a, b) => charCounts[b] - charCounts[a]);
+
+        // Auto-suggest logic if not explicitly saved by user
+        let auto0 = '';
+        let auto1 = '';
+        if (sortedChars.length >= 2 && totalHiddenChars > 12) {
+            const top2Count = charCounts[sortedChars[0]] + charCounts[sortedChars[1]];
+            if (top2Count / totalHiddenChars > 0.70) {
+                auto0 = sortedChars[0];
+                auto1 = sortedChars[1];
+            }
+        }
+
+        // Apply auto-suggest if user hasn't explicitly set anything
+        let isAutoSuggested = false;
+        if (!sbConfig.char0 && !sbConfig.char1 && auto0 && auto1) {
+            sbConfig.char0 = auto0;
+            sbConfig.char1 = auto1;
+            isAutoSuggested = true;
+        }
+
+        if (sbAutoHint) {
+            sbAutoHint.style.display = isAutoSuggested ? 'block' : 'none';
+        }
+
+        const buildOptions = (selectedVal) => {
+            let html = '<option value="">(None)</option>';
+            for (const char of sortedChars) {
+                const count = charCounts[char];
+                // basic fallback name if undefined
+                const name = charNames[char] || 'U+' + char.charCodeAt(0).toString(16).toUpperCase();
+                const selected = char === selectedVal ? 'selected' : '';
+
+                // Show a readable option name
+                const displayChar = char === '\uFE0E' ? 'VS-15' : char === '\uFE0F' ? 'VS-16' : name;
+                html += `<option value="${char}" ${selected}>${displayChar} (${count})</option>`;
+            }
+            return html;
+        };
+
+        sbChar0Select.innerHTML = buildOptions(sbConfig.char0);
+        sbChar1Select.innerHTML = buildOptions(sbConfig.char1);
+    }
+
+    // Set up change handlers for the new dynamic payload decoder dropdowns
+    if (sbChar0Select) {
+        sbChar0Select.addEventListener('change', () => {
+            sbConfig.char0 = sbChar0Select.value;
+            saveFilterSettings();
+        });
+    }
+    if (sbChar1Select) {
+        sbChar1Select.addEventListener('change', () => {
+            sbConfig.char1 = sbChar1Select.value;
+            saveFilterSettings();
         });
     }
 
-    // Set up button handlers for sneaky bits
-    document.querySelectorAll('.sb-val-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const char = btn.dataset.char;
-            const val = btn.dataset.val;
-            sneakyBitConfig[char] = val;
-
-            // Auto flip the other one if needed to maintain alternating structure
-            const otherChar = char === '\uFE0E' ? '\uFE0F' : '\uFE0E';
-            if (sneakyBitConfig[otherChar] === val) {
-                sneakyBitConfig[otherChar] = val === '0' ? '1' : '0';
-            }
-
-            saveFilterSettings();
-        });
-    });
-
     document.getElementById('sb-flip-btn')?.addEventListener('click', () => {
-        sneakyBitConfig['\uFE0E'] = sneakyBitConfig['\uFE0E'] === '0' ? '1' : '0';
-        sneakyBitConfig['\uFE0F'] = sneakyBitConfig['\uFE0F'] === '0' ? '1' : '0';
+        const temp = sbConfig.char0;
+        sbConfig.char0 = sbConfig.char1;
+        sbConfig.char1 = temp;
+        if (sbChar0Select) sbChar0Select.value = sbConfig.char0;
+        if (sbChar1Select) sbChar1Select.value = sbConfig.char1;
         saveFilterSettings();
     });
 
@@ -428,7 +578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
             highlightStyle: panelOptHlStyle.value,
-            sneakyBitConfig: sneakyBitConfig,
+            sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
         };
@@ -464,10 +614,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptCc.checked = settings.detectControlChars || false;
         panelOptZs.checked = settings.detectSpaceSeparators || false;
         panelOptHlStyle.value = settings.highlightStyle || 'nimbus';
-        sneakyBitConfig = settings.sneakyBitConfig || { '\uFE0E': '0', '\uFE0F': '1' };
+
+        // Load dynamic decoder settings or migrate old ones
+        if (settings.sbConfig) {
+            sbConfig = settings.sbConfig;
+        } else if (settings.sneakyBitConfig && settings.sneakyBitConfig['\uFE0E']) {
+            sbConfig = { char0: '\uFE0E', char1: '\uFE0F' };
+        } else {
+            sbConfig = { char0: '', char1: '' };
+        }
+
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
-        updateSneakyBitsUI();
         if (typeof filterUI !== 'undefined') filterUI.updateFilters(charFilters);
         updateSeqPreview();
     }

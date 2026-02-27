@@ -384,3 +384,98 @@ body {
     border-color: rgba(255, 255, 255, 0.2);
     color: white;
 }
+
+/* ─── Sneaky Bits Enhanced Cards ─────────────────────────────────────────── */
+.sneaky-bits-card {
+    border: 1px solid rgba(124, 58, 237, 0.4) !important;
+    background: rgba(124, 58, 237, 0.05) !important;
+    padding: 12px !important;
+}
+
+.sb-payload-block {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.sb-payload-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #888;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+}
+
+.sb-decoded-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+}
+
+.sb-decoded-text {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00ff88;
+    word-break: break-all;
+}
+
+.sb-data-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.sb-data-type {
+    font-size: 9px;
+    font-weight: 700;
+    color: #555;
+    min-width: 24px;
+}
+
+.sb-data-value {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #aaa;
+    word-break: break-all;
+}
+
+.sb-btn-action {
+    flex: 1;
+    justify-content: center;
+    padding: 4px !important;
+    font-size: 10px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    margin: 0 !important;
+}
+
+.sb-btn-action:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.sb-copy-mini {
+    padding: 2px !important;
+    margin: 0 !important;
+    opacity: 0.6;
+}
+
+.sb-copy-mini:hover {
+    opacity: 1;
+    background: rgba(0, 255, 136, 0.1) !important;
+}
+
+.sb-hint {
+    font-size: 10px;
+    color: #888;
+    font-style: italic;
+    margin-bottom: 6px;
+}

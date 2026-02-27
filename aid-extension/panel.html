@@ -131,28 +131,6 @@
                             <span>Detect space separators (Zs)</span>
                         </label>
 
-                        <!-- Sneaky Bits Configuration -->
-                        <div class="sneaky-bits-config"
-                            style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
-                            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 500;">Sneaky Bits
-                                (VS-15/16) Mapping</div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <div class="sb-assign-group">
-                                    <span class="sb-label">VS-15</span>
-                                    <button class="sb-val-btn active" id="sb-vs15-0" data-char="\uFE0E"
-                                        data-val="0">0</button>
-                                    <button class="sb-val-btn" id="sb-vs15-1" data-char="\uFE0E" data-val="1">1</button>
-                                </div>
-                                <div class="sb-assign-group">
-                                    <span class="sb-label">VS-16</span>
-                                    <button class="sb-val-btn" id="sb-vs16-0" data-char="\uFE0F" data-val="0">0</button>
-                                    <button class="sb-val-btn active" id="sb-vs16-1" data-char="\uFE0F"
-                                        data-val="1">1</button>
-                                </div>
-                            </div>
-                            <button id="sb-flip-btn" class="btn-secondary"
-                                style="width: 100%; font-size: 11px; padding: 4px;">Flip Configuration</button>
-                        </div>
                     </div>
             </div>
             </details>
@@ -166,22 +144,30 @@
                 </div>
                 <div class="filter-chips-container" id="panel-filter-chips"></div>
 
-                <details class="setting-drawer" id="panel-seq-length-drawer">
-                    <summary class="setting-drawer-label">Sequence length. <span id="panel-seq-preview"
-                            class="seq-preview"></span></summary>
-                    <div class="setting-drawer-body">
-                        <div class="setting-input-row">
-                            <label for="panel-opt-min-seq">Min length</label>
-                            <input type="number" id="panel-opt-min-seq" min="1" value="1" class="setting-number">
-                        </div>
-                        <div class="setting-input-row">
-                            <label for="panel-opt-max-seq">Max length</label>
-                            <input type="number" id="panel-opt-max-seq" min="0" value="0" placeholder="0 = no limit"
-                                class="setting-number">
-                        </div>
-                        <div class="setting-hint">0 = no limit. Filters consecutive runs by length.</div>
-                    </div>
                 </details>
+
+                <!-- Sneaky Bits Configuration (Relocated) -->
+                <div class="sneaky-bits-config" id="panel-sb-config-section"
+                    style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
+                    <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 500;">Dynamic Payload
+                        Decoder</div>
+                    <div id="sb-auto-suggest-hint" class="sb-hint" style="display:none; color: #4ade80;">Auto-suggested
+                        based on page detections</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                        <div class="setting-row" style="margin: 0; padding: 0;">
+                            <span style="font-size: 11px; color: #888; min-width: 50px;">'0' Bit:</span>
+                            <select id="sb-char-0-select" class="setting-select" style="flex: 1; max-width: 100%;">
+                                <option value="">(None)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row" style="margin: 0; padding: 0;">
+                            <span style="font-size: 11px; color: #888; min-width: 50px;">'1' Bit:</span>
+                            <select id="sb-char-1-select" class="setting-select" style="flex: 1; max-width: 100%;">
+                                <option value="">(None)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Settings Alert -->
