@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Detections
         renderDetections(r.detections);
+        updateSettingsAlert();
 
         // Tag runs
         if (r.tagRunSummary) {
@@ -136,8 +137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             tagRunsSection.style.display = 'none';
         }
     }
-
-    // ─── Detection Cards ─────────────────────────────────────────────
 
     function renderDetections(detections) {
         if (!detections?.length) {
@@ -254,6 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chipsContainerEl: panelFilterChips,
         categoryChips: document.querySelectorAll('#active-filters-section .search-filter-chip'),
         fuzzyToggleEl: panelOptFuzzySearch,
+        chipHintEl: document.getElementById('panel-chip-hint'),
         initialFilters: charFilters,
         onFilterChange: (newFilters) => {
             charFilters = newFilters;
@@ -269,6 +269,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         filterTogglesDiv.classList.toggle('collapsed', !filterToggle.open);
     });
 
+    // ─── Detection Cards ─────────────────────────────────────────────
+
     function updateSeqPreview() {
         const min = parseInt(panelOptMinSeq.value, 10) || 1;
         const max = parseInt(panelOptMaxSeq.value, 10) || 0;
@@ -277,6 +279,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     panelSeqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
+
+    function updateSettingsAlert() {
+        const alertEl = document.getElementById('panel-settings-alert');
+        if (!alertEl) return;
+
+        const uiDefault = filterUI ? filterUI.isDefaultState() : true;
+        const isNonDefault =
+            !uiDefault ||
+            panelOptNbsp.checked !== false ||
+            panelOptConfusable.checked !== false ||
+            panelOptCc.checked !== false ||
+            panelOptZs.checked !== false ||
+            (parseInt(panelOptMinSeq.value, 10) || 1) !== 1 ||
+            (parseInt(panelOptMaxSeq.value, 10) || 0) !== 0;
+
+        alertEl.classList.toggle('hidden', !isNonDefault);
+    }
 
     // Save settings and trigger re-scan
     function saveFilterSettings() {

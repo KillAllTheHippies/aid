@@ -10,6 +10,7 @@ function initFilterUI({
     chipsContainerEl,
     categoryChips, // Array or NodeList of DOM elements
     fuzzyToggleEl = null, // Optional
+    chipHintEl = null, // Optional
     initialFilters = [],
     onFilterChange = () => { }
 }) {
@@ -60,6 +61,9 @@ function initFilterUI({
     }
 
     function renderFilterChips() {
+        if (chipHintEl) {
+            chipHintEl.style.display = charFilters.length > 0 ? 'block' : 'none';
+        }
         chipsContainerEl.innerHTML = '';
         charFilters.forEach((filter, index) => {
             const chip = document.createElement('div');
@@ -211,6 +215,11 @@ function initFilterUI({
         updateFilters: (newFilters) => {
             charFilters = [...newFilters];
             renderFilterChips();
+        },
+        isDefaultState: () => {
+            const hasCustomFilters = charFilters.length > 0;
+            const hasExcludedCategory = Object.values(categoryStates).some(s => s === 'exclude');
+            return !hasCustomFilters && !hasExcludedCategory;
         }
     };
 }

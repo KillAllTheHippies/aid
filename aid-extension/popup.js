@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             triggerRescan();
         }
         updateSeqPreview();
+        updateSettingsAlert();
     }
 
     async function triggerRescan() {
@@ -105,6 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chipsContainerEl: filterChips,
         categoryChips: document.querySelectorAll('.search-filter-chip'),
         fuzzyToggleEl: optFuzzySearch,
+        chipHintEl: document.getElementById('chip-hint'),
         initialFilters: charFilters,
         onFilterChange: (newFilters) => {
             charFilters = newFilters;
@@ -150,6 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusText.textContent = `${totalDetections} detection${totalDetections !== 1 ? 's' : ''}`;
             statusDetail.textContent = suspicion.reason;
         }
+        updateSettingsAlert();
     }
 
     function showCachedResults(results) {
@@ -166,6 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusEmoji.textContent = EMOJI[s.suspicionLevel] || '⚪';
         statusText.textContent = `${s.totalCodePoints} detection${s.totalCodePoints !== 1 ? 's' : ''}`;
         statusDetail.textContent = s.reason;
+        updateSettingsAlert();
 
         if (results.categoryBreakdown) {
             const entries = Object.entries(results.categoryBreakdown)
@@ -185,6 +189,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusText.textContent = 'No detections';
         statusDetail.textContent = 'Page is clean';
         categorySection.style.display = 'none';
+        updateSettingsAlert();
+    }
+
+    function updateSettingsAlert() {
+        const alertEl = document.getElementById('popup-settings-alert');
+        if (!alertEl) return;
+
+        const uiDefault = filterUI ? filterUI.isDefaultState() : true;
+        const isNonDefault =
+            !uiDefault ||
+            optNbsp.checked !== false ||
+            optConfusable.checked !== false ||
+            optCc.checked !== false ||
+            optZs.checked !== false ||
+            (parseInt(optMinSeq.value, 10) || 1) !== 1 ||
+            (parseInt(optMaxSeq.value, 10) || 0) !== 0;
+
+        alertEl.classList.toggle('hidden', !isNonDefault);
     }
 
     // ─── Open Panel ─────────────────────────────────────────────────

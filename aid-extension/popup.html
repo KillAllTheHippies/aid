@@ -38,6 +38,12 @@
       <div class="status-detail" id="status-detail"></div>
     </div>
 
+    <!-- Settings Alert -->
+    <div id="popup-settings-alert" class="settings-alert hidden" style="margin: 0 16px 10px 16px;">
+      <span class="settings-alert-icon">⚠️</span>
+      <span style="font-size: 10px;">Filtered by non-default settings</span>
+    </div>
+
     <!-- Category Breakdown (hidden until scan completes with findings) -->
     <div class="popup-section" id="category-section" style="display: none;">
       <div class="section-label">📊 Category Breakdown</div>
@@ -45,11 +51,12 @@
     </div>
 
     <!-- Actions -->
-    <div class="popup-section popup-actions">
+    <div class="popup-section popup-actions" style="gap: 8px;">
       <button id="panel-btn" class="btn-secondary" title="Open detail panel">
         Open Detail Panel ↗
       </button>
-      <button id="settings-toggle" class="btn-icon-only" title="Settings">⚙</button>
+      <button id="settings-toggle" class="btn-icon-only" title="Settings"
+        style="border-color: rgba(124, 58, 237, 0.2) !important;">⚙</button>
     </div>
 
     <!-- Settings (hidden by default) -->
@@ -82,7 +89,7 @@
         </div>
 
         <div class="search-filter-group">
-          <label class="search-filter-label">Detection Tuning</label>
+          <label class="search-filter-label">Detection Filter</label>
           <div class="filter-input-wrapper">
             <input type="text" id="filter-input" class="setting-text-input"
               placeholder="Type name or U+XXXX to filter...">
@@ -90,12 +97,16 @@
           </div>
           <div class="filter-dropdown-hint"
             style="font-size: 11px; color: #888; margin: 4px 0 8px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; display: flex; justify-content: space-between; align-items: center;">
-            <span>Arrow keys or type, click <span style="color: #4ade80">+</span> or <span
-                style="color: #f87171">-</span> to toggle</span>
-            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"
-              title="Match all words anywhere in name or code">
-              <input type="checkbox" id="opt-fuzzy-search" style="margin: 0;"> Fuzzy
+            <span>type name or hex code to filter</span>
+            <label class="fuzzy-toggle-container" title="Match all words anywhere in name or code">
+              <input type="checkbox" id="opt-fuzzy-search" style="margin: 0;">
+              <span style="font-size: 10px; color: #aaa; font-weight: 500;">Fuzzy</span>
             </label>
+          </div>
+          <div id="chip-hint"
+            style="font-size: 10px; color: #888; margin: 8px 0 4px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; display: none;">
+            Click <span style="color: #4ade80">+</span> or <span style="color: #f87171">−</span> to toggle
+            inclusion/exclusion
           </div>
           <div class="filter-chips-container" id="filter-chips"></div>
           <details class="setting-drawer" id="seq-length-drawer">

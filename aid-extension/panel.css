@@ -59,12 +59,18 @@ body {
 .header-link {
     color: #4ade80;
     text-decoration: none;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+    padding: 4px 10px;
+    background: rgba(74, 222, 128, 0.05);
+    border: 1px solid rgba(74, 222, 128, 0.2) !important;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 .header-link:hover {
-    text-decoration: underline;
+    background: rgba(74, 222, 128, 0.1);
+    border-color: rgba(74, 222, 128, 0.4) !important;
     color: #69f0ae;
 }
 
@@ -119,6 +125,12 @@ body {
     background: rgba(244, 67, 54, 0.2);
     border-color: rgba(244, 67, 54, 0.4);
     color: #F44336;
+}
+
+.panel-filter-persistent {
+    padding: 10px 16px;
+    background: rgba(124, 58, 237, 0.03);
+    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
 }
 
 .panel-url {

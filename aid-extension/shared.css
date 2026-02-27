@@ -103,6 +103,8 @@
 
 .search-filter-chip:hover {
     background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .sf-toggle {
@@ -307,6 +309,25 @@
     accent-color: #7c3aed;
     width: 14px;
     height: 14px;
+    cursor: pointer;
+}
+
+/* ─── Custom Toggle Switch (Optional Upgrade) ────────────────────────────── */
+
+.fuzzy-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124, 58, 237, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(124, 58, 237, 0.2);
+    transition: all 0.2s;
+}
+
+.fuzzy-toggle-container:hover {
+    background: rgba(124, 58, 237, 0.2);
+    border-color: rgba(124, 58, 237, 0.4);
 }
 
 /* ─── Shared Buttons (from popup) ───────────────────────────────────────── */
@@ -410,4 +431,40 @@
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Settings Alert ─────────────────────────────────────────────────────── */
+
+.settings-alert {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 11px;
+    color: #ffb74d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.settings-alert.hidden {
+    display: none;
+}
+
+.settings-alert-icon {
+    font-size: 14px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
