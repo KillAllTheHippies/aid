@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelBtn = document.getElementById('panel-btn');
     const settingsToggle = document.getElementById('settings-toggle');
     const settingsSection = document.getElementById('settings-section');
+    const expandAllBtn = document.getElementById('expand-all-btn');
+
+    let allExpanded = false;
 
     const optAutoScan = document.getElementById('opt-autoscan');
     const filterInput = document.getElementById('filter-input');
@@ -125,6 +128,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tab) chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
     });
 
+    // ─── Expand All Toggle ──────────────────────────────────────────
+
+    expandAllBtn.addEventListener('click', async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) return;
+
+        allExpanded = !allExpanded;
+        expandAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+
+        chrome.tabs.sendMessage(tab.id, { action: 'expandAll', expand: allExpanded });
+    });
+
     // ─── Results Handling ───────────────────────────────────────────
 
     chrome.runtime.onMessage.addListener(message => {
@@ -144,13 +159,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         scanBtn.innerHTML = '<span class="btn-icon">▶</span> Re-scan Page';
         statusSection.style.display = 'block';
 
+        allExpanded = false;
+        expandAllBtn.textContent = 'Expand All';
+
         if (totalDetections === 0) {
             setClean();
+            expandAllBtn.classList.add('hidden');
         } else {
             statusBadge.className = `status-badge ${suspicion.suspicionLevel}`;
             statusEmoji.textContent = EMOJI[suspicion.suspicionLevel] || '⚪';
             statusText.textContent = `${totalDetections} detection${totalDetections !== 1 ? 's' : ''}`;
             statusDetail.textContent = suspicion.reason;
+            expandAllBtn.classList.remove('hidden');
         }
         updateSettingsAlert();
     }
@@ -171,6 +191,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusDetail.textContent = s.reason;
         updateSettingsAlert();
 
+        allExpanded = false;
+        expandAllBtn.textContent = 'Expand All';
+        expandAllBtn.classList.remove('hidden');
+
         if (results.categoryBreakdown) {
             const entries = Object.entries(results.categoryBreakdown)
                 .filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
@@ -189,6 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusText.textContent = 'No detections';
         statusDetail.textContent = 'Page is clean';
         categorySection.style.display = 'none';
+        expandAllBtn.classList.add('hidden');
         updateSettingsAlert();
     }
 

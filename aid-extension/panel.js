@@ -50,6 +50,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Close button
     document.getElementById('close-btn').addEventListener('click', () => window.close());
 
+    // Expand All button
+    const expandAllBtn = document.getElementById('expand-all-btn');
+    let allExpanded = false;
+
+    expandAllBtn.addEventListener('click', async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) return;
+
+        allExpanded = !allExpanded;
+        expandAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+
+        chrome.tabs.sendMessage(tab.id, { action: 'expandAll', expand: allExpanded });
+    });
+
     // ─── Data Loading ────────────────────────────────────────────────
 
     async function loadResults() {
@@ -75,6 +89,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             resultsContainer.style.display = 'none';
             return;
         }
+
+        allExpanded = false;
+        if (expandAllBtn) expandAllBtn.textContent = 'Expand All';
 
         emptyState.style.display = 'none';
         resultsContainer.style.display = 'block';

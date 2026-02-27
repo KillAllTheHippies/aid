@@ -687,6 +687,19 @@
                 }
                 break;
             }
+
+            case 'expandAll': {
+                const expand = message.expand;
+                for (const hl of highlightSpans) {
+                    const marker = hl.querySelector('.aid-marker');
+                    if (marker) {
+                        marker.textContent = expand ? marker.dataset.expanded : marker.dataset.collapsed;
+                        marker.dataset.isExpanded = String(expand);
+                        hl.classList.toggle('expanded', expand);
+                    }
+                }
+                break;
+            }
         }
     });
 

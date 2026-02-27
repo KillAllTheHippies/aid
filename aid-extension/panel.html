@@ -18,7 +18,11 @@
                     <img src="icons/icon48.png" alt="AID" width="20" height="20">
                     <span class="panel-title">AID – Detection Report</span>
                 </div>
-                <div class="panel-header-actions" style="position: relative;">
+                <div class="panel-header-actions"
+                    style="position: relative; display: flex; align-items: center; gap: 8px;">
+                    <button id="expand-all-btn" class="header-link"
+                        style="background: none; border: none; padding: 0;">Expand All</button>
+                    <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
                     <button id="header-export-btn" class="header-link"
                         style="background: none; border: none; padding: 0;">Export ▾</button>
                     <div id="header-export-menu" class="export-menu hidden">
