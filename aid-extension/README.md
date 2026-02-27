@@ -104,3 +104,6 @@ MIT License – see [LICENSE](../LICENSE)
 ## Test Tool
 
 https://embracethered.com/blog/ascii-smuggler.html
+
+
+TODO: More persistent logging options, if a page is long with lots of hidden messages it should have the ability to scroll and keep scrolling while keeping all of the detected messages in the log
