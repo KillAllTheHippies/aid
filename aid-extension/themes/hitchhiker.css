@@ -51,13 +51,47 @@ h4,
 h5,
 h6,
 li,
-a {
+a,
+label {
     color: #4ade80 !important;
 }
 
 a {
     text-decoration: underline !important;
     color: #00ffaa !important;
+}
+
+/* Garish Vogon Purple for hint/subtle text (normally gray) */
+.search-filter-label,
+.filter-dropdown-hint,
+.filter-dropdown-hint span,
+.setting-hint,
+.seq-preview,
+.setting-drawer-label,
+.detection-card-count,
+.detection-card-context,
+.detection-card-detail,
+.sb-payload-label,
+.sb-hint,
+.sb-data-type,
+.char-name,
+.panel-url,
+#chip-hint,
+#panel-chip-hint,
+.empty-text,
+.empty-hint {
+    color: #cc00ff !important;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Specific inline-style overrides for inline gray text */
+span[style*="color: #aaa"],
+span[style*="color: #888"],
+div[style*="color: #aaa"],
+div[style*="color: #888"],
+div[style*="color:#aaa"],
+div[style*="color:#888"] {
+    color: #cc00ff !important;
 }
 
 /* Selection color */
@@ -85,4 +119,137 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #555 !important;
+}
+
+/* ─── Sidebar Panel Overrides (Retro 16-bit Tiles) ───────────────────────── */
+
+.panel-container {
+    background-color: #001a00 !important;
+}
+
+.section-header {
+    color: #ff0055 !important;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8) !important;
+    border-bottom: 2px dashed #4ade80 !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 4px !important;
+}
+
+/* Grid Layouts to use sidebar space effectively */
+.summary-grid,
+.category-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+}
+
+/* Full width items */
+.summary-item-full,
+.category-row-full {
+    grid-column: 1 / -1 !important;
+}
+
+/* Retro 16-bit Tile Aesthetic */
+.summary-item,
+.category-row {
+    background-color: #003300 !important;
+    border: 2px solid #00ffaa !important;
+    box-shadow: 2px 2px 0 #005500, inset 1px 1px 0 #4ade80 !important;
+    border-radius: 4px !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    position: relative !important;
+    image-rendering: pixelated !important;
+}
+
+/* For Category Row to layout nicely */
+.category-row {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.summary-item::after,
+.category-row::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: repeating-linear-gradient(0deg,
+            rgba(0, 0, 0, 0.2),
+            rgba(0, 0, 0, 0.2) 1px,
+            transparent 1px,
+            transparent 2px) !important;
+    pointer-events: none !important;
+}
+
+.summary-item:hover,
+.category-row:hover {
+    background-color: #004400 !important;
+    border-color: #ffffff !important;
+}
+
+.summary-item-label,
+.cat-name {
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    color: #88ff88 !important;
+    margin-bottom: 4px !important;
+    text-shadow: 1px 1px 0 #000 !important;
+}
+
+.summary-item-value,
+.cat-count {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    color: #ffffff !important;
+    text-shadow: 1px 1px 0 #000 !important;
+}
+
+.cat-count {
+    background: #000 !important;
+    padding: 2px 4px !important;
+    border: 1px solid #4ade80 !important;
+}
+
+/* Severity specific coloring for tiles */
+.level-critical {
+    border-color: #ff0055 !important;
+    box-shadow: 2px 2px 0 #550000, inset 1px 1px 0 #ff8888 !important;
+}
+
+.level-critical .summary-item-value {
+    color: #ff0055 !important;
+}
+
+.level-high {
+    border-color: #ff9800 !important;
+    box-shadow: 2px 2px 0 #553300, inset 1px 1px 0 #ffcc88 !important;
+}
+
+.level-high .summary-item-value {
+    color: #ff9800 !important;
+}
+
+.level-medium {
+    border-color: #ffc107 !important;
+    box-shadow: 2px 2px 0 #554400, inset 1px 1px 0 #ffee88 !important;
+}
+
+.level-medium .summary-item-value {
+    color: #ffc107 !important;
+}
+
+.level-info {
+    border-color: #2196f3 !important;
+    box-shadow: 2px 2px 0 #002255, inset 1px 1px 0 #88ccff !important;
+}
+
+.level-info .summary-item-value {
+    color: #2196f3 !important;
 }
