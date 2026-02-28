@@ -145,6 +145,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Sync drawer controls with scan results settings
         if (r.settings) loadFilterSettings();
 
+        // Pass detected codepoints to filter dropdown
+        if (typeof filterUI !== 'undefined') {
+            const codepoints = extractDetectedCodepoints(r.detections);
+            filterUI.setDetectedCodepoints(codepoints);
+        }
+
         // Detections
         renderDetections(r.detections);
         updateSettingsAlert();

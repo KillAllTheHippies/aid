@@ -49,6 +49,7 @@ class FilterUI {
         this.knownChars = [];
         this.currentFocus = -1;
         this.currentMatches = [];
+        this.detectedCodepoints = new Set();
 
         try {
             this.knownChars = getAllKnownCharacters();
@@ -110,7 +111,7 @@ class FilterUI {
             .filter(([, state]) => state === 'include')
             .map(([cat]) => cat);
 
-        return this.knownChars.filter(c => {
+        const filtered = this.knownChars.filter(c => {
             if (!enabledCategories.includes(c.searchCategory)) return false;
             if (query) {
                 if (this.fuzzyToggleEl && this.fuzzyToggleEl.checked) {
@@ -123,7 +124,20 @@ class FilterUI {
                 }
             }
             return true;
-        }).slice(0, 500);
+        });
+
+        // Sort detected characters first
+        if (this.detectedCodepoints.size > 0 && !query) {
+            filtered.sort((a, b) => {
+                const aDetected = this.detectedCodepoints.has(a.codeStr);
+                const bDetected = this.detectedCodepoints.has(b.codeStr);
+                if (aDetected && !bDetected) return -1;
+                if (!aDetected && bDetected) return 1;
+                return 0;
+            });
+        }
+
+        return filtered.slice(0, 500);
     }
 
     _triggerDropdownRefresh() {
@@ -269,6 +283,37 @@ class FilterUI {
         const hasExcludedCategory = Object.values(this.categoryStates).some(s => s === 'exclude');
         return !hasCustomFilters && !hasExcludedCategory;
     }
+
+    /**
+     * Set the set of detected codepoints to surface them at the top.
+     * @param {Set<string>} codepointsSet - A set of `U+XXXX` strings.
+     */
+    setDetectedCodepoints(codepointsSet) {
+        this.detectedCodepoints = codepointsSet;
+        this._triggerDropdownRefresh();
+    }
+}
+
+/**
+ * Global helper to extract a Set of U+XXXX strings from a scan's detections array.
+ * @param {Array<Object>} detections - Array of detection objects from content script.
+ * @returns {Set<string>} Set of formatted codepoints.
+ */
+function extractDetectedCodepoints(detections) {
+    const codepoints = new Set();
+    if (!detections) return codepoints;
+
+    for (const d of detections) {
+        if (d.codePoints && Array.isArray(d.codePoints)) {
+            d.codePoints.forEach(cp => {
+                // The codePoints are sometimes formatted with extra spaces or as raw strings.
+                // Assuming format 'U+XXXX' or similar based on `content.js` `group[0].char.codePointAt(0).toString(16)`
+                const cleaned = cp.replace(/\s/g, '').toUpperCase();
+                if (cleaned.startsWith('U+')) codepoints.add(cleaned);
+            });
+        }
+    }
+    return codepoints;
 }
 
 // Global factory to maintain backward compatibility with popup.js and panel.js calls
