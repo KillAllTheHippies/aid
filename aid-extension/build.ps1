@@ -45,7 +45,7 @@ function Build-Chrome {
     }
 
     # Create zip
-    $zipPath = Join-Path $distDir 'aid-chrome.zip'
+    $zipPath = Join-Path $distDir 'ass-chrome.zip'
     if (Test-Path $zipPath) { Remove-Item $zipPath }
     Compress-Archive -Path "$outDir\*" -DestinationPath $zipPath
     Write-Host "[Chrome] Created: $zipPath" -ForegroundColor Green
@@ -85,7 +85,7 @@ function Build-Firefox {
     $baseManifest | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir 'manifest.json')
 
     # Create xpi (just a zip with .xpi extension)
-    $xpiPath = Join-Path $distDir 'aid-firefox.xpi'
+    $xpiPath = Join-Path $distDir 'ass-firefox.xpi'
     if (Test-Path $xpiPath) { Remove-Item $xpiPath }
     Compress-Archive -Path "$outDir\*" -DestinationPath ($xpiPath -replace '\.xpi$', '.zip')
     Rename-Item ($xpiPath -replace '\.xpi$', '.zip') $xpiPath
@@ -108,14 +108,14 @@ function Build-Edge {
     }
 
     # Create zip
-    $zipPath = Join-Path $distDir 'aid-edge.zip'
+    $zipPath = Join-Path $distDir 'ass-edge.zip'
     if (Test-Path $zipPath) { Remove-Item $zipPath }
     Compress-Archive -Path "$outDir\*" -DestinationPath $zipPath
     Write-Host "[Edge] Created: $zipPath" -ForegroundColor Green
 }
 
 # Main
-Write-Host "AID Browser Extension Builder" -ForegroundColor White
+Write-Host "ASS Browser Extension Builder" -ForegroundColor White
 Write-Host "=============================" -ForegroundColor DarkGray
 
 if (!(Test-Path $distDir)) { New-Item $distDir -ItemType Directory -Force | Out-Null }
