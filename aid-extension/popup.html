@@ -67,6 +67,16 @@
         <input type="checkbox" id="opt-autoscan">
         <span>Auto-scan pages</span>
       </label>
+      <div class="setting-row" style="align-items: center;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1;">
+          <input type="checkbox" id="opt-auto-hitchhiker">
+          <span>Auto-HHGTTG at >= </span>
+        </label>
+        <input type="number" id="opt-ah-threshold" class="setting-number"
+          style="width: 40px; padding: 2px 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; border-radius: 4px; text-align: center;"
+          min="1" value="8">
+        <span style="font-size: 11px; color: #aaa; margin-left: 4px;">bits</span>
+      </div>
       <div class="setting-input-block">
         <div class="search-filter-group" style="margin-bottom: 8px;">
           <label class="search-filter-label">Search Filtering (affects dropdown only)</label>

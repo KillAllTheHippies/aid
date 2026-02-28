@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optFuzzySearch = document.getElementById('opt-fuzzy-search');
     const filterChips = document.getElementById('filter-chips');
     const optTheme = document.getElementById('opt-theme');
+    const optAutoHitchhiker = document.getElementById('opt-auto-hitchhiker');
+    const optAhThreshold = document.getElementById('opt-ah-threshold');
     const optHlStyle = document.getElementById('opt-hl-style');
     const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
@@ -39,6 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const { settings } = await chrome.runtime.sendMessage({ action: 'getSettings' });
     optAutoScan.checked = settings.autoScan || false;
+    optAutoHitchhiker.checked = settings.autoHitchhiker || false;
+    if (optAhThreshold) optAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
     let charFilters = settings.charFilters || [];
     optFuzzySearch.checked = settings.fuzzySearch ?? true;
     optTheme.value = settings.visualProfile || 'default';
@@ -75,6 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             charFilters: charFilters,
             fuzzySearch: optFuzzySearch.checked,
             visualProfile: optTheme.value,
+            autoHitchhiker: optAutoHitchhiker.checked,
+            autoHitchhikerThreshold: optAhThreshold ? Math.max(1, parseInt(optAhThreshold.value, 10) || 8) : 8,
             highlightStyle: optHlStyle.value,
             detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,

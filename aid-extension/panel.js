@@ -409,6 +409,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelFilterDropdown = document.getElementById('panel-filter-dropdown');
     const panelFilterChips = document.getElementById('panel-filter-chips');
     const panelOptFuzzySearch = document.getElementById('panel-opt-fuzzy-search');
+    const panelVisualProfile = document.getElementById('panel-visual-profile');
+    const panelAutoHitchhiker = document.getElementById('panel-opt-auto-hitchhiker');
+    const panelAhThreshold = document.getElementById('panel-opt-ah-threshold');
+    const panelHighlightStyle = document.getElementById('panel-highlight-style');
     const panelOptNbsp = document.getElementById('panel-opt-nbsp');
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
@@ -571,11 +575,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             autoScan: false, // Don't change autoScan from panel
             charFilters: charFilters,
             fuzzySearch: panelOptFuzzySearch.checked,
+            visualProfile: panelVisualProfile ? panelVisualProfile.value : 'default',
+            autoHitchhiker: panelAutoHitchhiker ? panelAutoHitchhiker.checked : false,
+            autoHitchhikerThreshold: panelAhThreshold ? Math.max(1, parseInt(panelAhThreshold.value, 10) || 8) : 8,
             detectNbsp: panelOptNbsp.checked,
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
-            highlightStyle: currentHighlightStyle,
+            highlightStyle: panelHighlightStyle ? panelHighlightStyle.value : 'nimbus',
             sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
@@ -584,7 +591,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Preserve autoScan from the loaded settings
         chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
             if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
-            if (resp?.settings?.visualProfile !== undefined) s.visualProfile = resp.settings.visualProfile;
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
             triggerRescan();
         });
@@ -599,6 +605,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Checkbox & number input handlers
     [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
+    if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
+        saveFilterSettings();
+        applyTheme(panelVisualProfile.value);
+    });
+    if (panelAutoHitchhiker) panelAutoHitchhiker.addEventListener('change', saveFilterSettings);
+    if (panelAhThreshold) panelAhThreshold.addEventListener('input', saveFilterSettings);
+    if (panelHighlightStyle) panelHighlightStyle.addEventListener('change', saveFilterSettings);
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
 
@@ -609,10 +622,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         charFilters = settings.charFilters || [];
         panelOptNbsp.checked = settings.detectNbsp || false;
         panelOptFuzzySearch.checked = settings.fuzzySearch ?? true;
-        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
-        panelOptCc.checked = settings.detectControlChars || false;
-        panelOptZs.checked = settings.detectSpaceSeparators || false;
+        if (panelVisualProfile) panelVisualProfile.value = settings.visualProfile || 'default';
+        if (panelAutoHitchhiker) panelAutoHitchhiker.checked = settings.autoHitchhiker || false;
+        if (panelAhThreshold) panelAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
+        if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
+        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {

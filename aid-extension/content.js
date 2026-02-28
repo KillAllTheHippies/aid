@@ -46,7 +46,13 @@
         applyHighlights();
         ensureTooltip();
 
-        // Notify background (badge + cached results)
+        // Auto-Hitchhiker toggle logic
+        const ahThreshold = settings.autoHitchhikerThreshold ?? 8;
+        if (settings.autoHitchhiker && settings.visualProfile !== 'hitchhiker' && pageSuspicion.totalCodePoints >= ahThreshold) {
+            settings.visualProfile = 'hitchhiker';
+            applyTheme('hitchhiker');
+        }
+
         chrome.runtime.sendMessage({
             action: 'scanComplete',
             suspicion: pageSuspicion,

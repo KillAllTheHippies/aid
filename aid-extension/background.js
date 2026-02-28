@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS = {
     maxSeqLength: 0,  // 0 = no limit
     charFilters: [],  // array of { id: "U+FE0F", type: "exclude"|"include" }
     visualProfile: 'default',
+    autoHitchhiker: false,
+    autoHitchhikerThreshold: 8,
 };
 
 const BADGE_COLORS = {
