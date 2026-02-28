@@ -26,6 +26,8 @@
         isScanning = true;
         settings = opts || {};
 
+        applyTheme(settings.visualProfile);
+
         pauseObserver();
         removeHighlights();
         allResults = [];
@@ -57,6 +59,29 @@
 
         resumeObserver();
         isScanning = false;
+    }
+
+    // ─── Visual Profile / Themes ───────────────────────────────────────────
+
+    function applyTheme(themeName) {
+        let link = document.getElementById('ass-theme-link');
+
+        if (!themeName || themeName === 'default') {
+            if (link) link.remove();
+            return;
+        }
+
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'ass-theme-link';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+
+        const newHref = chrome.runtime.getURL(`themes/${themeName}.css`);
+        if (link.href !== newHref) {
+            link.href = newHref;
+        }
     }
 
     // ─── Text Node Collection ─────────────────────────────────────────────
