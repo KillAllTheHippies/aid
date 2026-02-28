@@ -1,5 +1,5 @@
 /**
- * AID – Shared UI Logic
+ * ASS – Shared UI Logic
  * Handles interactive filter inputs, autocomplete dropdowns, and category chips.
  * This logic is shared between the popup and the side panel.
  */
@@ -53,7 +53,7 @@ class FilterUI {
         try {
             this.knownChars = getAllKnownCharacters();
         } catch (e) {
-            console.warn('AID: Unable to load unicode characters for filtering. `unicode-chars.js` may not be loaded.', e);
+            console.warn('ASS: Unable to load unicode characters for filtering. `unicode-chars.js` may not be loaded.', e);
         }
 
         this._initCategoryToggles();

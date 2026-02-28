@@ -1,4 +1,4 @@
-# AID – ASCII Smuggling Detector
+# ASS - ASCII Smuggling Surfacer
 
 Browser extension that detects and visualizes invisible Unicode characters used in text steganography & smuggling attacks.
 
@@ -37,7 +37,7 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 
 ## Usage
 
-1. **Click the AID icon** in the toolbar
+1. **Click the ASS icon** in the toolbar
 2. **Press "Scan This Page"** in the popup
 3. View highlighted invisible characters on the page
 4. **Hover** over highlights for character details
@@ -75,7 +75,7 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 .\build.ps1 -Target firefox
 ```
 
-Output: `dist/aid-chrome.zip`, `dist/aid-firefox.xpi`, `dist/aid-edge.zip`
+Output: `dist/ass-chrome.zip`, `dist/ass-firefox.xpi`, `dist/ass-edge.zip`
 
 ## Detected Character Types
 
