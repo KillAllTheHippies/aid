@@ -477,29 +477,86 @@
 
     // ─── Tooltip System ────────────────────────────────────────────────────
 
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', e => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    }, true);
+
     function ensureTooltip() {
         if (tooltipEl) return;
 
         tooltipEl = document.createElement('div');
         tooltipEl.className = 'ass-tooltip';
         tooltipEl.style.display = 'none';
+        tooltipEl.style.pointerEvents = 'auto'; // Allow interaction
         document.body.appendChild(tooltipEl);
 
         let showTimer, hideTimer;
+        let isAltHeld = false;
 
-        // Hover → show tooltip
-        document.addEventListener('mouseenter', e => {
-            const hl = e.target.closest?.('.ass-hl');
-            if (!hl) return;
-            clearTimeout(hideTimer);
-            showTimer = setTimeout(() => showTooltip(hl), 200);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Alt') {
+                isAltHeld = true;
+                clearTimeout(hideTimer);
+            }
         }, true);
 
-        document.addEventListener('mouseleave', e => {
+        document.addEventListener('keyup', e => {
+            if (e.key === 'Alt') {
+                isAltHeld = false;
+                if (tooltipEl.style.display !== 'none' && !tooltipEl.matches(':hover') && !document.querySelector('.ass-hl:hover')) {
+                    hideTimer = setTimeout(hideTooltip, 200);
+                }
+            }
+        }, true);
+
+        // Hover → show tooltip
+        document.addEventListener('mouseover', e => {
             const hl = e.target.closest?.('.ass-hl');
+            const tooltip = e.target.closest?.('.ass-tooltip');
+
+            if (tooltip) {
+                clearTimeout(hideTimer);
+                return;
+            }
+
+            if (!hl) return;
+            // Delay appearance
+            clearTimeout(showTimer);
+            showTimer = setTimeout(() => {
+                clearTimeout(hideTimer); // Prevent any trailing hide commands if we are committing to show
+                showTooltip(hl);
+            }, 500);
+        }, true);
+
+        document.addEventListener('mouseout', e => {
+            const hl = e.target.closest?.('.ass-hl');
+            const tooltip = e.target.closest?.('.ass-tooltip');
+
+            if (tooltip) {
+                if (!isAltHeld) {
+                    clearTimeout(hideTimer);
+                    hideTimer = setTimeout(hideTooltip, 200);
+                }
+                return;
+            }
+
             if (!hl) return;
             clearTimeout(showTimer);
-            hideTimer = setTimeout(hideTooltip, 100);
+
+            // Wait 200ms before hiding, giving the user time to move the mouse into the tooltip
+            if (!isAltHeld) {
+                clearTimeout(hideTimer);
+                hideTimer = setTimeout(hideTooltip, 200);
+            }
+        }, true);
+
+        document.addEventListener('mousedown', e => {
+            // Close tooltip if clicking outside
+            if (tooltipEl.style.display !== 'none' && !e.target.closest('.ass-tooltip') && !e.target.closest('.ass-hl')) {
+                hideTooltip();
+            }
         }, true);
 
         // Click → toggle inline expansion (swap marker text)
@@ -561,18 +618,27 @@
 
         html += `
             <div class="ass-tooltip-divider"></div>
-            <div class="ass-tooltip-hint">Click to expand inline &bull; Ctrl+Click to copy</div>`;
+            <div class="ass-tooltip-hint">Click inline &bull; Ctrl+Click copy &bull; Hold Alt for cursor selection</div>`;
 
         tooltipEl.innerHTML = html;
         tooltipEl.style.display = 'block';
 
-        // Position above element, flip below if clipped
-        const rect = hlEl.getBoundingClientRect();
+        // Position near cursor instead of element bounds
         const tr = tooltipEl.getBoundingClientRect();
-        let top = rect.top - tr.height - 8 + scrollY;
-        let left = rect.left + rect.width / 2 - tr.width / 2 + scrollX;
-        if (top < scrollY) top = rect.bottom + 8 + scrollY;
-        left = Math.max(4, Math.min(left, innerWidth - tr.width - 4));
+        const cursorGap = 15;
+        let top = mouseY + cursorGap + scrollY;
+        let left = mouseX + cursorGap + scrollX;
+
+        // Prevent going off bottom
+        if (top - scrollY + tr.height > innerHeight) {
+            top = Math.max(scrollY + 4, mouseY - tr.height - cursorGap + scrollY);
+        }
+
+        // Prevent going off right
+        if (left - scrollX + tr.width > innerWidth) {
+            left = Math.max(scrollX + 4, mouseX - tr.width - cursorGap + scrollX);
+        }
+
         tooltipEl.style.top = `${top}px`;
         tooltipEl.style.left = `${left}px`;
     }
@@ -730,7 +796,7 @@
             case 'scrollToDetection': {
                 const nodeIds = message.nodeIds || [message.nodeId];
                 nodeIds.forEach((id, index) => {
-                    const el = document.querySelector(`[data-node-id="${id}"]`);
+                    const el = document.querySelector(`[data - node - id= "${id}"]`);
                     if (el) {
                         if (index === 0) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         el.classList.add('pulse');
