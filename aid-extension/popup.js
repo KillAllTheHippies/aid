@@ -178,7 +178,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!results.suspicion || !results.detections?.length) {
             setClean();
+            if (filterUI) filterUI.setDetectedCodepoints(new Set());
             return;
+        }
+
+        if (filterUI) {
+            const codepoints = extractDetectedCodepoints(results.detections);
+            filterUI.setDetectedCodepoints(codepoints);
         }
 
         const s = results.suspicion;
