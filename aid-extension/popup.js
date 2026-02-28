@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterDropdown = document.getElementById('filter-dropdown');
     const optFuzzySearch = document.getElementById('opt-fuzzy-search');
     const filterChips = document.getElementById('filter-chips');
+    const optTheme = document.getElementById('opt-theme');
     const optHlStyle = document.getElementById('opt-hl-style');
     const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
@@ -40,7 +41,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     optAutoScan.checked = settings.autoScan || false;
     let charFilters = settings.charFilters || [];
     optFuzzySearch.checked = settings.fuzzySearch ?? true;
+    optTheme.value = settings.visualProfile || 'default';
     optHlStyle.value = settings.highlightStyle || 'nimbus';
+
+    function applyTheme(themeName) {
+        let link = document.getElementById('ass-theme-link');
+        if (!themeName || themeName === 'default') {
+            if (link) link.remove();
+            return;
+        }
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'ass-theme-link';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+        link.href = `themes/${themeName}.css`;
+    }
+
+    applyTheme(optTheme.value);
     optNbsp.checked = settings.detectNbsp || false;
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
@@ -55,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             autoScan: optAutoScan.checked,
             charFilters: charFilters,
             fuzzySearch: optFuzzySearch.checked,
+            visualProfile: optTheme.value,
             highlightStyle: optHlStyle.value,
             detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,
@@ -67,10 +87,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (s.autoScan && !settings.autoScan) {
             chrome.permissions.request({ origins: ['<all_urls>'] }, granted => {
                 if (!granted) { optAutoScan.checked = false; s.autoScan = false; }
+                applyTheme(s.visualProfile);
                 chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
                 triggerRescan();
             });
         } else {
+            applyTheme(s.visualProfile);
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
             triggerRescan();
         }
@@ -93,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Filter Chips & Autocomplete ────────────────────────────────

@@ -81,8 +81,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Refresh from cache when a new scan completes
     chrome.runtime.onMessage.addListener(message => {
-        if (message.action === 'scanResults') setTimeout(loadResults, 100);
+        if (message.action === 'scanResults') setTimeout(() => {
+            loadResults();
+        }, 100);
     });
+
+    function applyTheme(themeName) {
+        let link = document.getElementById('ass-theme-link');
+        if (!themeName || themeName === 'default') {
+            if (link) link.remove();
+            return;
+        }
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'ass-theme-link';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+        link.href = `themes/${themeName}.css`;
+    }
 
     // ─── Rendering ───────────────────────────────────────────────────
 
@@ -143,7 +160,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Sync drawer controls with scan results settings
-        if (r.settings) loadFilterSettings();
+        if (r.settings) {
+            loadFilterSettings();
+            applyTheme(r.settings.visualProfile);
+        }
 
         // Pass detected codepoints to filter dropdown
         if (typeof filterUI !== 'undefined') {
@@ -152,13 +172,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Detections
-        renderDetections(r.detections);
+        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
+        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
         updateSettingsAlert();
 
         // Tag runs
-        if (r.tagRunSummary) {
+        const combinedSummary = [];
+        if (r.tagRunSummary) combinedSummary.push(r.tagRunSummary);
+        if (sneakyDecodedStrings.length) {
+            combinedSummary.push(...sneakyDecodedStrings.map(s => `'${s}'`));
+        }
+
+        if (combinedSummary.length > 0) {
             tagRunsSection.style.display = 'block';
-            tagRuns.textContent = r.tagRunSummary;
+            tagRuns.innerText = combinedSummary.join('\n\n');
         } else {
             tagRunsSection.style.display = 'none';
         }
@@ -245,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { sneakyMap, filteredDetections };
     }
 
-    function buildSneakyBitsHtml(sneakyMap) {
+    function buildSneakyBitsHtml(sneakyMap, decodedStringsArr) {
         let html = '';
         const dName0 = sbChar0Select?.options[sbChar0Select.selectedIndex]?.text.split(' (')[0] || 'Char 0';
         const dName1 = sbChar1Select?.options[sbChar1Select.selectedIndex]?.text.split(' (')[0] || 'Char 1';
@@ -259,6 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const renderConfig = (label, bin, hex, dec, isA) => {
                 const showDecoded = dec.isFullPrintable || dec.isTrimmedPrintable;
                 const activeDec = dec.isTrimmedPrintable && !dec.isFullPrintable ? dec.trimmed : dec.full;
+                if (showDecoded && decodedStringsArr) decodedStringsArr.push(activeDec);
                 const isTrimmedUsed = dec.isTrimmedPrintable && !dec.isFullPrintable;
                 return `
                 <div class="sb-payload-block" style="${isA ? 'margin-bottom: 12px;' : ''}">
@@ -331,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderDetections(detections) {
         if (!detections?.length) {
             detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
-            return;
+            return { sneakyDecodedStrings: [] };
         }
 
         populateSbDropdowns(detections);
@@ -339,7 +367,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const { sneakyMap, filteredDetections } = processSneakyBits(detections, char0, char1);
 
-        let html = buildSneakyBitsHtml(sneakyMap);
+        const sneakyDecodedStrings = [];
+        let html = buildSneakyBitsHtml(sneakyMap, sneakyDecodedStrings);
         html += buildStandardHtml(filteredDetections);
 
         detectionsList.innerHTML = html;
@@ -370,6 +399,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 chrome.tabs.sendMessage(tab.id, { action: 'scrollToDetection', nodeIds });
             });
         });
+
+        return { sneakyDecodedStrings };
     }
 
     // ─── Filter Drawer Controls ──────────────────────────────────────
@@ -553,6 +584,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Preserve autoScan from the loaded settings
         chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
             if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
+            if (resp?.settings?.visualProfile !== undefined) s.visualProfile = resp.settings.visualProfile;
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
             triggerRescan();
         });
@@ -594,6 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
         if (typeof filterUI !== 'undefined') filterUI.updateFilters(charFilters);
+        applyTheme(settings.visualProfile);
         updateSeqPreview();
     }
 
