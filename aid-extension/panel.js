@@ -86,20 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 100);
     });
 
-    function applyTheme(themeName) {
-        let link = document.getElementById('ass-theme-link');
-        if (!themeName || themeName === 'default') {
-            if (link) link.remove();
-            return;
-        }
-        if (!link) {
-            link = document.createElement('link');
-            link.id = 'ass-theme-link';
-            link.rel = 'stylesheet';
-            document.head.appendChild(link);
-        }
-        link.href = `themes/${themeName}.css`;
-    }
+    // applyTheme is now provided globally by shared-ui.js
 
     // ─── Rendering ───────────────────────────────────────────────────
 
@@ -117,8 +104,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer.style.display = 'block';
         pageUrl.textContent = r.url || '';
 
-        // Summary
-        const s = r.suspicion;
+        renderSummary(r.suspicion);
+        renderCategoryBreakdown(r.categoryBreakdown);
+
+        if (r.settings) {
+            loadFilterSettings();
+            applyTheme(r.settings.visualProfile);
+        }
+
+        if (typeof filterUI !== 'undefined') {
+            const codepoints = extractDetectedCodepoints(r.detections);
+            filterUI.setDetectedCodepoints(codepoints);
+        }
+
+        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
+        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
+        updateSettingsAlert();
+
+        renderTagRuns(r.tagRunSummary, sneakyDecodedStrings);
+    }
+
+    function renderSummary(s) {
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
         summaryGrid.innerHTML = `
             <div class="summary-item summary-item-full level-${s.suspicionLevel}">
@@ -145,42 +151,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="summary-item-label">Longest Tag Run</div>
                 <div class="summary-item-value">${s.maxConsecutiveUnicodeTags}</div>
             </div>`;
+    }
 
-        // Category breakdown
-        if (r.categoryBreakdown) {
-            const entries = Object.entries(r.categoryBreakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-            if (entries.length) {
-                categorySection.style.display = 'block';
-                categoryGrid.innerHTML = entries.map(([name, count]) =>
-                    `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
-                ).join('');
-            } else {
-                categorySection.style.display = 'none';
-            }
+    function renderCategoryBreakdown(breakdown) {
+        if (!breakdown) {
+            categorySection.style.display = 'none';
+            return;
         }
-
-        // Sync drawer controls with scan results settings
-        if (r.settings) {
-            loadFilterSettings();
-            applyTheme(r.settings.visualProfile);
+        const entries = Object.entries(breakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+        if (entries.length) {
+            categorySection.style.display = 'block';
+            categoryGrid.innerHTML = entries.map(([name, count]) =>
+                `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
+            ).join('');
+        } else {
+            categorySection.style.display = 'none';
         }
+    }
 
-        // Pass detected codepoints to filter dropdown
-        if (typeof filterUI !== 'undefined') {
-            const codepoints = extractDetectedCodepoints(r.detections);
-            filterUI.setDetectedCodepoints(codepoints);
-        }
-
-        // Detections
-        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
-        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
-        updateSettingsAlert();
-
-        // Tag runs
+    function renderTagRuns(tagSummary, decodedStrings) {
         const combinedSummary = [];
-        if (r.tagRunSummary) combinedSummary.push(r.tagRunSummary);
-        if (sneakyDecodedStrings.length) {
-            combinedSummary.push(...sneakyDecodedStrings.map(s => `'${s}'`));
+        if (tagSummary) combinedSummary.push(tagSummary);
+        if (decodedStrings.length) {
+            combinedSummary.push(...decodedStrings.map(s => `'${s}'`));
         }
 
         if (combinedSummary.length > 0) {
@@ -191,12 +184,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Helper to format binary string into 8-bit blocks
     function formatBinary(binaryStr) {
         return (binaryStr.match(/.{1,8}/g) || []).join(' ');
     }
 
-    // Helper to convert binary string to Hex
     function toHex(binStr) {
         if (!binStr) return '';
         const bytes = binStr.match(/.{1,8}/g) || [];
@@ -206,8 +197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join(' ');
     }
 
-    // Helper to decode binary string (8-bit ASCII/UTF-8)
-    // Returns full decoding, and optionally a "trimmed" version if it yields better results
     function decodeBinary(binStr) {
         if (!binStr || binStr.length < 8) return { full: '', printable: false };
 

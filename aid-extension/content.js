@@ -8,6 +8,12 @@
     if (window.__assInjected) return;
     window.__assInjected = true;
 
+    // ─── Constants ──────────────────────────────────────────────────────────
+
+    const TOOLTIP_DELAY_MS = 500;
+    const TOOLTIP_HIDE_DELAY_MS = 200;
+    const TOOLTIP_CURSOR_GAP = 15;
+
     // ─── State ──────────────────────────────────────────────────────────────
 
     let allResults = [];    // { textNode, findings[] }[]
@@ -32,10 +38,8 @@
         removeHighlights();
         allResults = [];
 
-        // Collect visible text nodes
         const textNodes = collectTextNodes();
 
-        // Scan each text node for invisible characters
         for (const tn of textNodes) {
             const findings = scanTextNode(tn);
             if (findings.length) allResults.push({ textNode: tn, findings });
@@ -141,7 +145,7 @@
                 const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
                 let n;
                 while ((n = w.nextNode())) out.push(n);
-            } catch (e) { console.debug('ASS cross-origin skip:', e); }
+            } catch (e) { /* ignore cross-origin errors */ }
         }
     }
 
@@ -157,7 +161,6 @@
         const excludeSet = new Set(charFilters.filter(f => f.type === 'exclude').map(f => f.id));
         const isAllowListMode = includeSet.size > 0;
 
-        // Helper to check if a char should be skipped based on filters
         function shouldSkip(name, codeStr) {
             if (isAllowListMode) {
                 return !includeSet.has(name) && !includeSet.has(codeStr);
@@ -457,7 +460,7 @@
 
                     highlightSpans.push(span);
                 } catch (e) {
-                    console.warn('ASS: highlight failed:', e);
+                    /* ignore highlight errors */
                 }
             }
         }
@@ -512,7 +515,7 @@
             if (e.key === 'Alt') {
                 isAltHeld = false;
                 if (tooltipEl.style.display !== 'none' && !tooltipEl.matches(':hover') && !document.querySelector('.ass-hl:hover')) {
-                    hideTimer = setTimeout(hideTooltip, 200);
+                    hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
                 }
             }
         }, true);
@@ -533,7 +536,7 @@
             showTimer = setTimeout(() => {
                 clearTimeout(hideTimer); // Prevent any trailing hide commands if we are committing to show
                 showTooltip(hl);
-            }, 500);
+            }, TOOLTIP_DELAY_MS);
         }, true);
 
         document.addEventListener('mouseout', e => {
@@ -543,7 +546,7 @@
             if (tooltip) {
                 if (!isAltHeld) {
                     clearTimeout(hideTimer);
-                    hideTimer = setTimeout(hideTooltip, 200);
+                    hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
                 }
                 return;
             }
@@ -551,10 +554,10 @@
             if (!hl) return;
             clearTimeout(showTimer);
 
-            // Wait 200ms before hiding, giving the user time to move the mouse into the tooltip
+            // Wait before hiding, giving the user time to move the mouse into the tooltip
             if (!isAltHeld) {
                 clearTimeout(hideTimer);
-                hideTimer = setTimeout(hideTooltip, 200);
+                hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
             }
         }, true);
 
@@ -604,7 +607,7 @@
     function showTooltip(hlEl) {
         if (!tooltipEl) return;
         let data;
-        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch (e) { console.warn('tooltip JSON parse', e); return; }
+        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch (e) { return; }
 
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
@@ -631,18 +634,17 @@
 
         // Position near cursor instead of element bounds
         const tr = tooltipEl.getBoundingClientRect();
-        const cursorGap = 15;
-        let top = mouseY + cursorGap + scrollY;
-        let left = mouseX + cursorGap + scrollX;
+        let top = mouseY + TOOLTIP_CURSOR_GAP + scrollY;
+        let left = mouseX + TOOLTIP_CURSOR_GAP + scrollX;
 
         // Prevent going off bottom
         if (top - scrollY + tr.height > innerHeight) {
-            top = Math.max(scrollY + 4, mouseY - tr.height - cursorGap + scrollY);
+            top = Math.max(scrollY + 4, mouseY - tr.height - TOOLTIP_CURSOR_GAP + scrollY);
         }
 
         // Prevent going off right
         if (left - scrollX + tr.width > innerWidth) {
-            left = Math.max(scrollX + 4, mouseX - tr.width - cursorGap + scrollX);
+            left = Math.max(scrollX + 4, mouseX - tr.width - TOOLTIP_CURSOR_GAP + scrollX);
         }
 
         tooltipEl.style.top = `${top}px`;
@@ -690,7 +692,7 @@
                 const before = (span.previousSibling?.textContent || '').slice(-20);
                 const after = (span.nextSibling?.textContent || '').slice(0, 20);
                 context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-            } catch (e) { console.debug('ASS context error:', e); }
+            } catch (e) { /* ignore context errors */ }
 
             detections.push({
                 nodeId: d.nodeId,
@@ -743,7 +745,7 @@
                     const before = txt.slice(Math.max(0, startIdx - 20), startIdx);
                     const after = txt.slice(startIdx + group.length, startIdx + group.length + 20);
                     context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-                } catch (e) { console.debug('ASS context error:', e); }
+                } catch (e) { /* ignore context errors */ }
 
                 detections.push({
                     nodeId,
@@ -802,7 +804,7 @@
             case 'scrollToDetection': {
                 const nodeIds = message.nodeIds || [message.nodeId];
                 nodeIds.forEach((id, index) => {
-                    const el = document.querySelector(`[data - node - id= "${id}"]`);
+                    const el = document.querySelector(`[data-node-id="${id}"]`);
                     if (el) {
                         if (index === 0) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         el.classList.add('pulse');

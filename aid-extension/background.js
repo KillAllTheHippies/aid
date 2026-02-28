@@ -45,6 +45,10 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // ─── Content-Script Injection ───────────────────────────────────────────────
 
+/**
+ * Injects the required scanning scripts and CSS into the target tab, and triggers a scan.
+ * @param {number} tabId - The ID of the tab to inject into.
+ */
 async function injectAndScan(tabId) {
     const settings = await getSettings();
     try {

@@ -48,20 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     optTheme.value = settings.visualProfile || 'default';
     optHlStyle.value = settings.highlightStyle || 'nimbus';
 
-    function applyTheme(themeName) {
-        let link = document.getElementById('ass-theme-link');
-        if (!themeName || themeName === 'default') {
-            if (link) link.remove();
-            return;
-        }
-        if (!link) {
-            link = document.createElement('link');
-            link.id = 'ass-theme-link';
-            link.rel = 'stylesheet';
-            document.head.appendChild(link);
-        }
-        link.href = `themes/${themeName}.css`;
-    }
+    // applyTheme is now provided globally by shared-ui.js
 
     applyTheme(optTheme.value);
     optNbsp.checked = settings.detectNbsp || false;
