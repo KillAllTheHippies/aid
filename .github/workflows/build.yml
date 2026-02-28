@@ -1,0 +1,77 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [aid-extension]
+  pull_request:
+    branches: [aid-extension]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y zip jq
+
+      - name: Build all targets
+        working-directory: aid-extension
+        run: |
+          chmod +x build.sh
+          ./build.sh all
+
+      - name: Verify build outputs
+        working-directory: aid-extension
+        run: |
+          echo "=== Build artifacts ==="
+          ls -la dist/
+          
+          # Verify all zips exist
+          test -f dist/aid-chrome.zip || (echo "FAIL: Chrome zip missing" && exit 1)
+          test -f dist/aid-firefox.xpi || (echo "FAIL: Firefox xpi missing" && exit 1)
+          test -f dist/aid-edge.zip || (echo "FAIL: Edge zip missing" && exit 1)
+          
+          # Verify Chrome zip contains all required files
+          echo ""
+          echo "=== Chrome zip contents ==="
+          unzip -l dist/aid-chrome.zip
+          
+          # Check critical files are present
+          unzip -l dist/aid-chrome.zip | grep -q "shared-ui.js" || (echo "FAIL: shared-ui.js missing from Chrome build" && exit 1)
+          unzip -l dist/aid-chrome.zip | grep -q "shared.css" || (echo "FAIL: shared.css missing from Chrome build" && exit 1)
+          unzip -l dist/aid-chrome.zip | grep -q "manifest.json" || (echo "FAIL: manifest.json missing" && exit 1)
+          unzip -l dist/aid-chrome.zip | grep -q "content.js" || (echo "FAIL: content.js missing" && exit 1)
+          
+          # Verify Firefox manifest was properly merged
+          echo ""
+          echo "=== Firefox manifest ==="
+          mkdir -p /tmp/ff-check
+          cd /tmp/ff-check && unzip -o "$OLDPWD/dist/aid-firefox.xpi" manifest.json
+          jq '.browser_specific_settings' manifest.json
+          jq '.sidebar_action' manifest.json
+          # Ensure side_panel was removed
+          test "$(jq '.side_panel' manifest.json)" = "null" || (echo "FAIL: side_panel not removed from Firefox manifest" && exit 1)
+          # Ensure sidePanel permission was removed
+          jq -e '.permissions | index("sidePanel") | not' manifest.json || (echo "FAIL: sidePanel permission not removed" && exit 1)
+          
+          echo ""
+          echo "✅ All checks passed"
+
+      - name: Upload Chrome artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-chrome
+          path: aid-extension/dist/aid-chrome.zip
+
+      - name: Upload Firefox artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-firefox
+          path: aid-extension/dist/aid-firefox.xpi
+
+      - name: Upload Edge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-edge
+          path: aid-extension/dist/aid-edge.zip

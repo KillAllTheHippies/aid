@@ -16,6 +16,8 @@ $extensionFiles = @(
     'background.js',
     'content.js',
     'unicode-chars.js',
+    'shared-ui.js',
+    'shared.css',
     'popup.html',
     'popup.js',
     'popup.css',
