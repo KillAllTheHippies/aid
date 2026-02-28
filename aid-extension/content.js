@@ -110,7 +110,7 @@
                 const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
                 let n;
                 while ((n = w.nextNode())) out.push(n);
-            } catch { /* cross-origin — skip */ }
+            } catch (e) { console.debug('AID cross-origin skip:', e); }
         }
     }
 
@@ -134,6 +134,75 @@
             return excludeSet.has(name) || excludeSet.has(codeStr);
         }
 
+        // Helper to match a character against our dictionaries and rules
+        function matchCharacter(char, cp, charIndex, charLen) {
+            if (INVISIBLE_CHARS[char]) {
+                const name = INVISIBLE_CHARS[char];
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (!shouldSkip(name, codeStr)) {
+                    return { char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: codeStr };
+                }
+                return null;
+            }
+
+            if (char === '\u00A0') {
+                const name = 'NO-BREAK SPACE';
+                const codeStr = 'U+00A0';
+                if ((isAllowListMode || settings.detectNbsp) && !shouldSkip(name, codeStr)) {
+                    return { char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr };
+                }
+                return null;
+            }
+
+            if (CONFUSABLE_SPACE_CHARS[char]) {
+                const name = CONFUSABLE_SPACE_CHARS[char];
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if ((isAllowListMode || settings.detectConfusableSpaces) && !shouldSkip(name, codeStr)) {
+                    return { char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr };
+                }
+                return null;
+            }
+
+            if (isVariationSelectorSupplement(cp)) {
+                const name = variationSelectorName(cp);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (!shouldSkip(name, codeStr)) {
+                    const lowByte = cp - VS_SUPPLEMENT_START;
+                    const asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
+                    return { char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: `${codeStr} → ASCII: ${asciiStr}` };
+                }
+                return null;
+            }
+
+            if (isUnicodeTag(cp)) {
+                const name = 'UNICODE TAG';
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if (!shouldSkip(name, codeStr)) {
+                    const tagDecoded = decodeUnicodeTag(cp);
+                    return { char, name, charIndex, charLen, type: 'tag', decoded: tagDecoded, detail: `${codeStr} → ASCII: ${tagDecoded}` };
+                }
+                return null;
+            }
+
+            if (isControlChar(char)) {
+                const name = controlCharName(char);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if ((isAllowListMode || settings.detectControlChars) && !shouldSkip(name, codeStr)) {
+                    return { char, name, charIndex, charLen, type: 'cc', decoded: null, detail: codeStr };
+                }
+                return null;
+            }
+
+            if (isSpaceSeparator(char)) {
+                const name = zsCharName(char);
+                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+                if ((isAllowListMode || settings.detectSpaceSeparators) && !shouldSkip(name, codeStr)) {
+                    return { char, name, charIndex, charLen, type: 'zs', decoded: null, detail: codeStr };
+                }
+            }
+            return null;
+        }
+
         for (let i = 0; i < text.length; i++) {
             const cp = text.codePointAt(i);
             const char = String.fromCodePoint(cp);
@@ -143,76 +212,9 @@
             // The charIndex always points to the FIRST code unit of this character
             const charIndex = charLen === 2 ? i - 1 : i;
 
-            // 1. Primary invisible chars
-            if (INVISIBLE_CHARS[char]) {
-                const name = INVISIBLE_CHARS[char];
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (shouldSkip(name, codeStr)) continue;
-                findings.push({ char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: codeStr });
-                continue;
-            }
-            // 1.5 NO-BREAK SPACE (U+00A0) - intercepted to use its own toggle
-            // In allow-list mode, we ignore the individual toggle and just check the include list
-            if (char === '\u00A0') {
-                const name = 'NO-BREAK SPACE';
-                const codeStr = 'U+00A0';
-                if (isAllowListMode) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
-                } else if (settings.detectNbsp) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
-                }
-                continue;
-            }
-            // 2. Confusable spaces (optional)
-            if (CONFUSABLE_SPACE_CHARS[char]) {
-                const name = CONFUSABLE_SPACE_CHARS[char];
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (isAllowListMode) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
-                } else if (settings.detectConfusableSpaces) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'space_like', decoded: null, detail: codeStr });
-                }
-                continue;
-            }
-            // 3. Variation Selector Supplements (VS17–VS256)
-            if (isVariationSelectorSupplement(cp)) {
-                const name = variationSelectorName(cp);
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (shouldSkip(name, codeStr)) continue;
-                const lowByte = cp - VS_SUPPLEMENT_START;
-                const asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
-                findings.push({ char, name, charIndex, charLen, type: 'invisible', decoded: null, detail: `${codeStr} → ASCII: ${asciiStr}` });
-                continue;
-            }
-            // 4. Unicode Tags (U+E0001–U+E007F)
-            if (isUnicodeTag(cp)) {
-                const name = 'UNICODE TAG';
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (shouldSkip(name, codeStr)) continue;
-                const tagDecoded = decodeUnicodeTag(cp);
-                findings.push({ char, name, charIndex, charLen, type: 'tag', decoded: tagDecoded, detail: `${codeStr} → ASCII: ${tagDecoded}` });
-                continue;
-            }
-            // 5. Control chars (optional)
-            if (isControlChar(char)) {
-                const name = controlCharName(char);
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (isAllowListMode) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'cc', decoded: null, detail: codeStr });
-                } else if (settings.detectControlChars) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'cc', decoded: null, detail: codeStr });
-                }
-                continue;
-            }
-            // 6. Space separators (optional)
-            if (isSpaceSeparator(char)) {
-                const name = zsCharName(char);
-                const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-                if (isAllowListMode) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'zs', decoded: null, detail: codeStr });
-                } else if (settings.detectSpaceSeparators) {
-                    if (!shouldSkip(name, codeStr)) findings.push({ char, name, charIndex, charLen, type: 'zs', decoded: null, detail: codeStr });
-                }
+            const match = matchCharacter(char, cp, charIndex, charLen);
+            if (match) {
+                findings.push(match);
             }
         }
 
@@ -514,7 +516,7 @@
     function showTooltip(hlEl) {
         if (!tooltipEl) return;
         let data;
-        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch { return; }
+        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch (e) { console.warn('tooltip JSON parse', e); return; }
 
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
@@ -581,19 +583,17 @@
     // ─── Serializable Results (for panel) ──────────────────────────────────
     // Built from live DOM highlight spans to guarantee 1:1 with jump targets.
 
-    function buildSerializableResults() {
+    function getHighlightDetections() {
         const detections = [];
-
         for (const span of highlightSpans) {
             if (!span.parentNode) continue;
             const d = span.dataset;
-
             let context = '';
             try {
                 const before = (span.previousSibling?.textContent || '').slice(-20);
                 const after = (span.nextSibling?.textContent || '').slice(0, 20);
                 context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-            } catch { /* ignore */ }
+            } catch (e) { console.debug('AID context error:', e); }
 
             detections.push({
                 nodeId: d.nodeId,
@@ -609,9 +609,11 @@
                 rawChars: d.rawChars || '',
             });
         }
+        return detections;
+    }
 
-        // Second pass: add detections from editable regions (not highlighted)
-        const highlightedNodeIds = new Set(detections.map(d => d.nodeId));
+    function getEditableDetections(highlightedNodeIds) {
+        const detections = [];
         for (let nodeIdx = 0; nodeIdx < allResults.length; nodeIdx++) {
             const { textNode, findings } = allResults[nodeIdx];
             if (!textNode.parentElement) continue;
@@ -644,7 +646,7 @@
                     const before = txt.slice(Math.max(0, startIdx - 20), startIdx);
                     const after = txt.slice(startIdx + group.length, startIdx + group.length + 20);
                     context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-                } catch { /* ignore */ }
+                } catch (e) { console.debug('AID context error:', e); }
 
                 detections.push({
                     nodeId,
@@ -663,12 +665,19 @@
                 });
             }
         }
+        return detections;
+    }
+
+    function buildSerializableResults() {
+        let detections = getHighlightDetections();
+        const highlightedNodeIds = new Set(detections.map(d => d.nodeId));
+        const editableDetections = getEditableDetections(highlightedNodeIds);
+        detections = detections.concat(editableDetections);
 
         // Sort detections into exact document order to avoid reversed grouping
         detections.sort((a, b) => {
             const partsA = a.nodeId.split('-');
             const partsB = b.nodeId.split('-');
-            // nodeId format: aid-{nodeIndex}-{charIndex}
             const nodeDiff = parseInt(partsA[1], 10) - parseInt(partsB[1], 10);
             if (nodeDiff !== 0) return nodeDiff;
             return parseInt(partsA[2], 10) - parseInt(partsB[2], 10);
@@ -694,12 +703,15 @@
                 break;
 
             case 'scrollToDetection': {
-                const el = document.querySelector(`[data-node-id="${message.nodeId}"]`);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    el.classList.add('pulse');
-                    el.addEventListener('animationend', () => el.classList.remove('pulse'), { once: true });
-                }
+                const nodeIds = message.nodeIds || [message.nodeId];
+                nodeIds.forEach((id, index) => {
+                    const el = document.querySelector(`[data-node-id="${id}"]`);
+                    if (el) {
+                        if (index === 0) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('pulse');
+                        el.addEventListener('animationend', () => el.classList.remove('pulse'), { once: true });
+                    }
+                });
                 break;
             }
 

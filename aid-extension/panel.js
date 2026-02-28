@@ -4,6 +4,9 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+    window.onerror = function (msg, url, line, col, error) {
+        document.body.innerHTML += `<div style="color:red; font-family:monospace; padding: 10px; background: black; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999;">ERROR: ${msg}<br/>Line: ${line}<br/>${error?.stack || ''}</div>`;
+    };
     const emptyState = document.getElementById('empty-state');
     const resultsContainer = document.getElementById('results-container');
     const pageUrl = document.getElementById('page-url');
@@ -18,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentResults = null;
 
-    // Header Export Dropdown Menu
+
     const exportBtn = document.getElementById('header-export-btn');
     const exportMenu = document.getElementById('header-export-menu');
 
@@ -47,10 +50,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Close button
+
     document.getElementById('close-btn').addEventListener('click', () => window.close());
 
-    // Expand All button
+
     const expandAllBtn = document.getElementById('expand-all-btn');
     let allExpanded = false;
 
@@ -185,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const result = chars.join('');
                 const isPrintable = result.replace(/·/g, '').length > 0;
                 return { text: result, printable: isPrintable };
-            } catch (e) { return { text: '', printable: false }; }
+            } catch (e) { console.warn('Decode error:', e); return { text: '', printable: false }; }
         }
 
         const full = tryDecode(binStr);
@@ -206,46 +209,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    function renderDetections(detections) {
-        if (!detections?.length) {
-            detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
-            return;
-        }
-
-        // 1. Initialize Dynamic Payload Dropdowns
-        populateSbDropdowns(detections);
-        const { char0, char1 } = sbConfig;
-
-        // 2. Extract and aggregate Sneaky Bits by DOM Text Node (nodeIdx)
+    function processSneakyBits(detections, char0, char1) {
         const sneakyMap = {};
         const filteredDetections = [];
-
         for (const d of detections) {
             const raw = d.rawChars || '';
-            let binPartA = '';
-            let binPartB = '';
-            let hasNonPayload = false;
+            let binPartA = ''; let binPartB = ''; let hasNonPayload = false;
 
             if (char0 && char1 && char0 !== char1) {
                 for (const char of raw) {
                     if (char === char0 || char === char1) {
                         const mappedA = char === char0 ? '0' : '1';
-                        binPartA += mappedA;
-                        binPartB += mappedA === '0' ? '1' : '0';
-                    } else {
-                        hasNonPayload = true;
-                        break;
-                    }
+                        binPartA += mappedA; binPartB += mappedA === '0' ? '1' : '0';
+                    } else { hasNonPayload = true; break; }
                 }
-            } else {
-                hasNonPayload = true;
-            }
+            } else { hasNonPayload = true; }
 
             if (raw.length > 0 && !hasNonPayload) {
                 const nodeIdx = d.nodeId.split('-')[1];
-                if (!sneakyMap[nodeIdx]) {
-                    sneakyMap[nodeIdx] = { count: 0, binaryA: '', binaryB: '', nodeIds: [] };
-                }
+                if (!sneakyMap[nodeIdx]) sneakyMap[nodeIdx] = { count: 0, binaryA: '', binaryB: '', nodeIds: [] };
                 sneakyMap[nodeIdx].binaryA += binPartA;
                 sneakyMap[nodeIdx].binaryB += binPartB;
                 sneakyMap[nodeIdx].nodeIds.push(d.nodeId);
@@ -254,31 +236,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 filteredDetections.push(d);
             }
         }
+        return { sneakyMap, filteredDetections };
+    }
 
-        const groups = { critical: [], high: [], medium: [], info: [] };
-        for (const d of filteredDetections) (groups[d.severity] || groups.info).push(d);
-
-        const labels = {
-            critical: { emoji: '🔴', label: 'Critical' },
-            high: { emoji: '🟠', label: 'High' },
-            medium: { emoji: '🟡', label: 'Medium' },
-            info: { emoji: '🔵', label: 'Info' },
-        };
-
+    function buildSneakyBitsHtml(sneakyMap) {
         let html = '';
+        const dName0 = sbChar0Select?.options[sbChar0Select.selectedIndex]?.text.split(' (')[0] || 'Char 0';
+        const dName1 = sbChar1Select?.options[sbChar1Select.selectedIndex]?.text.split(' (')[0] || 'Char 1';
+        const mappingDesc = `'0' = ${dName0}, '1' = ${dName1}`;
 
         for (const [nodeIdx, sg] of Object.entries(sneakyMap)) {
             if (sg.count === 0) continue;
-
-            const dName0 = sbChar0Select?.options[sbChar0Select.selectedIndex]?.text.split(' (')[0] || 'Char 0';
-            const dName1 = sbChar1Select?.options[sbChar1Select.selectedIndex]?.text.split(' (')[0] || 'Char 1';
-            const mappingDesc = `'0' = ${dName0}, '1' = ${dName1}`;
-
-            const showA = formatBinary(sg.binaryA);
-            const showB = formatBinary(sg.binaryB);
-            const hexA = toHex(sg.binaryA);
-            const hexB = toHex(sg.binaryB);
-
             const decA = decodeBinary(sg.binaryA);
             const decB = decodeBinary(sg.binaryB);
 
@@ -286,7 +254,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const showDecoded = dec.isFullPrintable || dec.isTrimmedPrintable;
                 const activeDec = dec.isTrimmedPrintable && !dec.isFullPrintable ? dec.trimmed : dec.full;
                 const isTrimmedUsed = dec.isTrimmedPrintable && !dec.isFullPrintable;
-
                 return `
                 <div class="sb-payload-block" style="${isA ? 'margin-bottom: 12px;' : ''}">
                     <div class="sb-payload-label">${label}</div>
@@ -299,15 +266,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>` : ''}
                     ${isTrimmedUsed ? `<div class="sb-hint">Displayed w/ trailing bits removed</div>` : ''}
                     ${dec.hasTrailing && !isTrimmedUsed ? `<div class="sb-hint">Note: ${dec.trailingCount} trailing bits remaining</div>` : ''}
-                    
-                    <div class="sb-data-row">
-                        <span class="sb-data-type">HEX</span>
-                        <code class="sb-data-value">${esc(hex)}</code>
-                    </div>
-                    <div class="sb-data-row">
-                        <span class="sb-data-type">BIN</span>
-                        <code class="sb-data-value">${esc(formatBinary(bin))}</code>
-                    </div>
+                    <div class="sb-data-row"><span class="sb-data-type">HEX</span><code class="sb-data-value">${esc(hex)}</code></div>
+                    <div class="sb-data-row"><span class="sb-data-type">BIN</span><code class="sb-data-value">${esc(formatBinary(bin))}</code></div>
                     <div style="display:flex;gap:4px;margin-top:6px;">
                         <button class="detection-copy sb-btn-action" data-copy-text="${esc(bin)}" title="Copy Binary">Copy Bin</button>
                         <button class="detection-copy sb-btn-action" data-copy-text="${esc(hex)}" title="Copy Hex">Copy Hex</button>
@@ -315,62 +275,66 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>`;
             };
 
-            html += `<div class="detection-group-header">
-                <span class="severity-dot high"></span> 🕵️ Sneaky Bits Sequence (${sg.count} bits)
-            </div>
+            html += `<div class="detection-group-header"><span class="severity-dot high"></span> 🕵️ Sneaky Bits Sequence (${sg.count} bits)</div>
             <div class="detection-card sneaky-bits-card">
                 <div class="detection-card-header">
-                    <div class="detection-card-title">
-                        <span class="detection-card-type">Dynamic Payload</span>
-                        <span class="detection-card-count">${mappingDesc}</span>
-                    </div>
+                    <div class="detection-card-title"><span class="detection-card-type">Dynamic Payload</span><span class="detection-card-count">${mappingDesc}</span></div>
                 </div>
-                ${renderConfig("CONFIGURATION A", sg.binaryA, hexA, decA, true)}
-                ${renderConfig("CONFIGURATION B (Inverted)", sg.binaryB, hexB, decB, false)}
-                ${sg.nodeIds.length > 0 ? `<button class="detection-jump" data-node-id="${sg.nodeIds[0]}" style="margin-top:10px;width:100%;">Jump to first bit ↗</button>` : ''}
+                ${renderConfig("CONFIGURATION A", sg.binaryA, toHex(sg.binaryA), decA, true)}
+                ${renderConfig("CONFIGURATION B (Inverted)", sg.binaryB, toHex(sg.binaryB), decB, false)}
+                ${sg.nodeIds.length > 0 ? `<button class="detection-jump" data-node-ids="${sg.nodeIds.join(',')}" style="margin-top:10px;width:100%;">Highlight occurrence</button>` : ''}
             </div>`;
         }
+        return html;
+    }
+
+    function buildStandardHtml(filteredDetections) {
+        let html = '';
+        const groups = { critical: [], high: [], medium: [], info: [] };
+        for (const d of filteredDetections) (groups[d.severity] || groups.info).push(d);
+
+        const labels = { critical: { emoji: '🔴', label: 'Critical' }, high: { emoji: '🟠', label: 'High' }, medium: { emoji: '🟡', label: 'Medium' }, info: { emoji: '🔵', label: 'Info' } };
 
         for (const [level, items] of Object.entries(groups)) {
             if (!items.length) continue;
             const { emoji, label } = labels[level];
-
-            html += `<div class="detection-group-header">
-                <span class="severity-dot ${level}"></span> ${emoji} ${label} (${items.length})
-            </div>`;
+            html += `<div class="detection-group-header"><span class="severity-dot ${level}"></span> ${emoji} ${label} (${items.length})</div>`;
 
             for (const d of items) {
-                // Show detail line if it adds info beyond the code point
-                const detailLine = d.detail && d.detail !== d.codePoints?.[0]
-                    ? `<div class="detection-card-detail">${esc(d.detail)}</div>`
-                    : '';
-                // Show code point subtitle for single-char detections
-                const codePointLine = d.groupSize === 1 && d.codePoints?.[0]
-                    ? `<div class="detection-card-detail" style="opacity:0.6;font-family:monospace;">${esc(d.codePoints[0])}</div>`
-                    : '';
-                // Only show decoded line when it differs from both name and code point
-                const showDecoded = d.decoded
-                    && d.decoded !== d.charName
-                    && d.decoded !== d.codePoints?.[0];
-
+                const detailLine = d.detail && d.detail !== d.codePoints?.[0] ? `<div class="detection-card-detail">${esc(d.detail)}</div>` : '';
+                const codePointLine = d.groupSize === 1 && d.codePoints?.[0] ? `<div class="detection-card-detail" style="opacity:0.6;font-family:monospace;">${esc(d.codePoints[0])}</div>` : '';
+                const showDecoded = d.decoded && d.decoded !== d.charName && d.decoded !== d.codePoints?.[0];
                 const copyText = d.decoded || d.codePoints?.[0] || d.charName;
 
                 html += `<div class="detection-card">
                     <div class="detection-card-header">
-                        <div class="detection-card-title">
-                            <span class="detection-card-type">${esc(d.charName)}</span>
-                            <span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span>
-                        </div>
+                        <div class="detection-card-title"><span class="detection-card-type">${esc(d.charName)}</span><span class="detection-card-count">${d.groupSize} ${d.groupSize > 1 ? 'consecutive' : 'char'}</span></div>
                         <button class="detection-copy" data-copy-text="${esc(copyText)}" title="Copy decoded text">
                             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </div>${codePointLine}${detailLine}
                     ${showDecoded ? `<div class="detection-card-decoded">→ "${esc(d.decoded)}"</div>` : ''}
                     <div class="detection-card-context">${esc(d.context)}</div>
-                    <button class="detection-jump" data-node-id="${d.nodeId}">Jump to location ↗</button>
+                    <button class="detection-jump" data-node-id="${d.nodeId}">Highlight occurrence</button>
                 </div>`;
             }
         }
+        return html;
+    }
+
+    function renderDetections(detections) {
+        if (!detections?.length) {
+            detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
+            return;
+        }
+
+        populateSbDropdowns(detections);
+        const { char0, char1 } = sbConfig;
+
+        const { sneakyMap, filteredDetections } = processSneakyBits(detections, char0, char1);
+
+        let html = buildSneakyBitsHtml(sneakyMap);
+        html += buildStandardHtml(filteredDetections);
 
         detectionsList.innerHTML = html;
 
@@ -381,17 +345,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const rawText = btn.dataset.copyText;
                 if (!rawText) return;
                 try {
-                    // Sanitize output to prevent escaping quote structures when pasted
                     const sanitizedText = JSON.stringify(rawText).slice(1, -1).replace(/'/g, "\\'");
                     await navigator.clipboard.writeText(sanitizedText);
                     const originalHtml = btn.innerHTML;
                     btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="#00ff88" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                    setTimeout(() => {
-                        btn.innerHTML = originalHtml;
-                    }, 2000);
-                } catch (err) {
-                    console.error('AID: Failed to copy text:', err);
-                }
+                    setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+                } catch (err) { console.error('AID: Failed to copy text:', err); }
             });
         });
 
@@ -399,7 +358,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         detectionsList.querySelectorAll('.detection-jump').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (tab) chrome.tabs.sendMessage(tab.id, { action: 'scrollToDetection', nodeId: btn.dataset.nodeId });
+                if (!tab) return;
+
+                const nodeIds = btn.dataset.nodeIds ? btn.dataset.nodeIds.split(',') : [btn.dataset.nodeId];
+                chrome.tabs.sendMessage(tab.id, { action: 'scrollToDetection', nodeIds });
             });
         });
     }
@@ -416,7 +378,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelOptZs = document.getElementById('panel-opt-zs');
     const panelOptMinSeq = document.getElementById('panel-opt-min-seq');
     const panelOptMaxSeq = document.getElementById('panel-opt-max-seq');
-    const panelOptHlStyle = document.getElementById('panel-opt-hl-style');
     const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
     const panelSeqPreview = document.getElementById('panel-seq-preview');
 
@@ -426,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let charFilters = [];
     let sbConfig = { char0: '', char1: '' };
+    let currentHighlightStyle = 'nimbus';
 
     function populateSbDropdowns(detections) {
         if (!sbChar0Select || !sbChar1Select || !detections) return;
@@ -560,7 +522,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             panelOptConfusable.checked !== false ||
             panelOptCc.checked !== false ||
             panelOptZs.checked !== false ||
-            panelOptHlStyle.value !== 'nimbus' ||
             (parseInt(panelOptMinSeq.value, 10) || 1) !== 1 ||
             (parseInt(panelOptMaxSeq.value, 10) || 0) !== 0;
 
@@ -577,7 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
-            highlightStyle: panelOptHlStyle.value,
+            highlightStyle: currentHighlightStyle,
             sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
@@ -598,7 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox & number input handlers
-    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch, panelOptHlStyle].forEach(el =>
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
@@ -613,7 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;
         panelOptCc.checked = settings.detectControlChars || false;
         panelOptZs.checked = settings.detectSpaceSeparators || false;
-        panelOptHlStyle.value = settings.highlightStyle || 'nimbus';
+        currentHighlightStyle = settings.highlightStyle || 'nimbus';
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {

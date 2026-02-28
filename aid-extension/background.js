@@ -88,6 +88,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // ─── Badge ──────────────────────────────────────────────────────────────────
 
+/**
+ * Updates the extension badge with the current scan results.
+ * @param {number} tabId - The ID of the tab to update.
+ * @param {Object} data - Overview containing suspicious level and detections.
+ */
 function updateBadge(tabId, { suspicion, totalDetections }) {
     if (totalDetections === 0) {
         chrome.action.setBadgeText({ text: '✓', tabId });
@@ -100,10 +105,15 @@ function updateBadge(tabId, { suspicion, totalDetections }) {
 
 // ─── Auto-Scan ──────────────────────────────────────────────────────────────
 
+/**
+ * Enables or disables the auto-scan injections.
+ * @param {Object} settings - The current extension settings.
+ */
 function handleAutoScanToggle(settings) {
     settings.autoScan ? registerAutoScan() : unregisterAutoScan();
 }
 
+/** Registers the auto-scan content scripts to inject on all URLs. */
 function registerAutoScan() {
     chrome.scripting.registerContentScripts([{
         id: 'aid-autoscan',
@@ -111,11 +121,12 @@ function registerAutoScan() {
         js: ['unicode-chars.js', 'content.js'],
         css: ['styles.css'],
         runAt: 'document_idle',
-    }]).catch(() => { /* may already be registered */ });
+    }]).catch((e) => { console.debug('AID: Script unregister check:', e); });
 }
 
+/** Unregisters the auto-scan content scripts. */
 function unregisterAutoScan() {
-    chrome.scripting.unregisterContentScripts({ ids: ['aid-autoscan'] }).catch(() => { });
+    chrome.scripting.unregisterContentScripts({ ids: ['aid-autoscan'] }).catch((e) => { console.debug('AID: Script unregister check:', e); });
 }
 
 // ─── Tab Cleanup ────────────────────────────────────────────────────────────
