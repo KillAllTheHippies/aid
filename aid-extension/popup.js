@@ -13,8 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categorySection = document.getElementById('category-section');
     const categoryList = document.getElementById('category-list');
     const panelBtn = document.getElementById('panel-btn');
-    const settingsToggle = document.getElementById('settings-toggle');
-    const settingsSection = document.getElementById('settings-section');
     const expandAllBtn = document.getElementById('expand-all-btn');
 
     let allExpanded = false;
@@ -24,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterDropdown = document.getElementById('filter-dropdown');
     const optFuzzySearch = document.getElementById('opt-fuzzy-search');
     const filterChips = document.getElementById('filter-chips');
+    const optHlStyle = document.getElementById('opt-hl-style');
     const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
     const optCc = document.getElementById('opt-cc');
@@ -41,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     optAutoScan.checked = settings.autoScan || false;
     let charFilters = settings.charFilters || [];
     optFuzzySearch.checked = settings.fuzzySearch ?? true;
+    optHlStyle.value = settings.highlightStyle || 'nimbus';
     optNbsp.checked = settings.detectNbsp || false;
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
@@ -50,15 +50,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ─── Settings Panel ─────────────────────────────────────────────
 
-    settingsToggle.addEventListener('click', () => {
-        settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
-    });
-
     function saveSettings() {
         const s = {
             autoScan: optAutoScan.checked,
             charFilters: charFilters,
             fuzzySearch: optFuzzySearch.checked,
+            highlightStyle: optHlStyle.value,
             detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
@@ -96,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Filter Chips & Autocomplete ────────────────────────────────

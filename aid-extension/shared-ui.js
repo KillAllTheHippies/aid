@@ -4,44 +4,116 @@
  * This logic is shared between the popup and the side panel.
  */
 
-function initFilterUI({
-    inputEl,
-    dropdownEl,
-    chipsContainerEl,
-    categoryChips, // Array or NodeList of DOM elements
-    fuzzyToggleEl = null, // Optional
-    chipHintEl = null, // Optional
-    initialFilters = [],
-    onFilterChange = () => { }
-}) {
-    let charFilters = [...initialFilters];
-    const categoryStates = {};
-    let knownChars = [];
-    try { knownChars = getAllKnownCharacters(); } catch { /* Ignore if unicode-chars not loaded */ }
+/**
+ * Configuration options for initializing the FilterUI.
+ * @typedef {Object} FilterUIOptions
+ * @property {HTMLInputElement} inputEl - The main text input element for filtering.
+ * @property {HTMLElement} dropdownEl - The container element for the autocomplete dropdown.
+ * @property {HTMLElement} chipsContainerEl - The container element for active filter chips.
+ * @property {NodeList|Array<HTMLElement>} categoryChips - Collection of category toggle elements.
+ * @property {HTMLInputElement} [fuzzyToggleEl] - Optional checkbox element to toggle fuzzy searching.
+ * @property {HTMLElement} [chipHintEl] - Optional hint text element shown near chips.
+ * @property {Array<Object>} [initialFilters=[]] - Initial array of filter objects.
+ * @property {Function} [onFilterChange=() => {}] - Callback fired when filters are added/removed/toggled.
+ */
 
-    // Initialize category toggles (the inclusion/exclusion group toggles)
-    categoryChips.forEach(chip => {
-        const cat = chip.dataset.category;
-        categoryStates[cat] = chip.dataset.state;
+/**
+ * Manages the interactive filter inputs, autocomplete dropdowns, and category chips.
+ * This logic is shared between the popup and the side panel.
+ */
+class FilterUI {
+    /**
+     * Initializes the FilterUI instance with the given DOM elements and configuration.
+     * @param {FilterUIOptions} options - Configuration options.
+     */
+    constructor({
+        inputEl,
+        dropdownEl,
+        chipsContainerEl,
+        categoryChips,
+        fuzzyToggleEl = null,
+        chipHintEl = null,
+        initialFilters = [],
+        onFilterChange = () => { }
+    }) {
+        this.inputEl = inputEl;
+        this.dropdownEl = dropdownEl;
+        this.chipsContainerEl = chipsContainerEl;
+        this.categoryChips = categoryChips;
+        this.fuzzyToggleEl = fuzzyToggleEl;
+        this.chipHintEl = chipHintEl;
+        this.onFilterChange = onFilterChange;
 
-        chip.addEventListener('click', () => {
-            const newState = chip.dataset.state === 'include' ? 'exclude' : 'include';
-            chip.dataset.state = newState;
-            categoryStates[cat] = newState;
-            chip.querySelector('.sf-toggle').textContent = newState === 'include' ? '+' : '\u2212';
-            triggerDropdownRefresh();
+        this.charFilters = [...initialFilters];
+        this.categoryStates = {};
+        this.knownChars = [];
+        this.currentFocus = -1;
+        this.currentMatches = [];
+
+        try {
+            this.knownChars = getAllKnownCharacters();
+        } catch (e) {
+            console.warn('AID: Unable to load unicode characters for filtering. `unicode-chars.js` may not be loaded.', e);
+        }
+
+        this._initCategoryToggles();
+        this._initEventListeners();
+        this._renderFilterChips();
+    }
+
+    _initCategoryToggles() {
+        this.categoryChips.forEach(chip => {
+            const cat = chip.dataset.category;
+            this.categoryStates[cat] = chip.dataset.state;
+
+            chip.addEventListener('click', () => {
+                const newState = chip.dataset.state === 'include' ? 'exclude' : 'include';
+                chip.dataset.state = newState;
+                this.categoryStates[cat] = newState;
+                chip.querySelector('.sf-toggle').textContent = newState === 'include' ? '+' : '\u2212';
+                this._triggerDropdownRefresh();
+            });
         });
-    });
+    }
 
-    function getFilteredKnownChars(query) {
-        const enabledCategories = Object.entries(categoryStates)
+    _initEventListeners() {
+        this.inputEl.addEventListener('keydown', (e) => this._handleKeydown(e));
+
+        const handleInputOrFocus = () => {
+            const query = this.inputEl.value.trim().toLowerCase();
+            this._renderDropdown(this._getFilteredKnownChars(query));
+        };
+
+        this.inputEl.addEventListener('input', handleInputOrFocus);
+        this.inputEl.addEventListener('focus', handleInputOrFocus);
+
+        this.inputEl.addEventListener('click', () => {
+            if (!this.dropdownEl.classList.contains('show')) {
+                handleInputOrFocus();
+            }
+        });
+
+        this.inputEl.addEventListener('blur', () => {
+            this.dropdownEl.classList.remove('show');
+        });
+
+        if (this.fuzzyToggleEl) {
+            this.fuzzyToggleEl.addEventListener('change', () => {
+                this._triggerDropdownRefresh();
+                this.inputEl.focus();
+            });
+        }
+    }
+
+    _getFilteredKnownChars(query) {
+        const enabledCategories = Object.entries(this.categoryStates)
             .filter(([, state]) => state === 'include')
             .map(([cat]) => cat);
 
-        return knownChars.filter(c => {
+        return this.knownChars.filter(c => {
             if (!enabledCategories.includes(c.searchCategory)) return false;
             if (query) {
-                if (fuzzyToggleEl && fuzzyToggleEl.checked) {
+                if (this.fuzzyToggleEl && this.fuzzyToggleEl.checked) {
                     const chunks = query.toLowerCase().split(/\s+/).filter(Boolean);
                     if (chunks.length === 0) return true;
                     return chunks.every(chunk => c.name.toLowerCase().includes(chunk) || c.codeStr.toLowerCase().includes(chunk));
@@ -51,21 +123,21 @@ function initFilterUI({
                 }
             }
             return true;
-        }).slice(0, 500); // hard limit to prevent UI stutter
+        }).slice(0, 500);
     }
 
-    function triggerDropdownRefresh() {
-        if (!dropdownEl.classList.contains('show')) return;
-        const query = inputEl.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
+    _triggerDropdownRefresh() {
+        if (!this.dropdownEl.classList.contains('show')) return;
+        const query = this.inputEl.value.trim().toLowerCase();
+        this._renderDropdown(this._getFilteredKnownChars(query));
     }
 
-    function renderFilterChips() {
-        if (chipHintEl) {
-            chipHintEl.style.display = charFilters.length > 0 ? 'block' : 'none';
+    _renderFilterChips() {
+        if (this.chipHintEl) {
+            this.chipHintEl.style.display = this.charFilters.length > 0 ? 'block' : 'none';
         }
-        chipsContainerEl.innerHTML = '';
-        charFilters.forEach((filter, index) => {
+        this.chipsContainerEl.innerHTML = '';
+        this.charFilters.forEach((filter, index) => {
             const chip = document.createElement('div');
             chip.className = 'filter-chip';
             chip.dataset.type = filter.type;
@@ -74,14 +146,16 @@ function initFilterUI({
             toggle.className = 'filter-chip-toggle';
             toggle.dataset.type = filter.type;
             toggle.textContent = filter.type === 'include' ? '+' : (filter.type === 'exclude' ? '−' : '×');
-            toggle.title = filter.type === 'include' ? 'Include (Allow-list)' : (filter.type === 'exclude' ? 'Exclude (Ignore)' : 'Disabled');
+            toggle.title = filter.type === 'include'
+                ? 'Include (Allow-list)'
+                : (filter.type === 'exclude' ? 'Exclude (Ignore)' : 'Disabled');
+
             toggle.addEventListener('click', () => {
                 if (filter.type === 'exclude') filter.type = 'disabled';
                 else if (filter.type === 'disabled') filter.type = 'include';
                 else filter.type = 'exclude';
-                renderFilterChips();
-                // We pass back the new array to completely replace settings
-                onFilterChange([...charFilters]);
+                this._renderFilterChips();
+                this.onFilterChange([...this.charFilters]);
             });
 
             const label = document.createElement('div');
@@ -92,27 +166,24 @@ function initFilterUI({
             remove.className = 'filter-chip-remove';
             remove.textContent = '×';
             remove.addEventListener('click', () => {
-                charFilters.splice(index, 1);
-                renderFilterChips();
-                onFilterChange([...charFilters]);
+                this.charFilters.splice(index, 1);
+                this._renderFilterChips();
+                this.onFilterChange([...this.charFilters]);
             });
 
             chip.appendChild(toggle);
             chip.appendChild(label);
             chip.appendChild(remove);
-            chipsContainerEl.appendChild(chip);
+            this.chipsContainerEl.appendChild(chip);
         });
     }
 
-    let currentFocus = -1;
-    let currentMatches = [];
-
-    function renderDropdown(matches) {
-        currentMatches = matches;
-        currentFocus = -1;
-        dropdownEl.innerHTML = '';
+    _renderDropdown(matches) {
+        this.currentMatches = matches;
+        this.currentFocus = -1;
+        this.dropdownEl.innerHTML = '';
         if (matches.length === 0) {
-            dropdownEl.classList.remove('show');
+            this.dropdownEl.classList.remove('show');
             return;
         }
 
@@ -129,97 +200,78 @@ function initFilterUI({
 
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                addFilter(match);
+                this._addFilter(match);
             });
 
-            dropdownEl.appendChild(item);
+            this.dropdownEl.appendChild(item);
         });
-        dropdownEl.classList.add('show');
+        this.dropdownEl.classList.add('show');
     }
 
-    function addFilter(match) {
-        if (!charFilters.find(f => f.id === match.codeStr)) {
-            charFilters.push({ id: match.codeStr, type: 'exclude' });
-            renderFilterChips();
-            onFilterChange([...charFilters]);
+    _addFilter(match) {
+        if (!this.charFilters.find(f => f.id === match.codeStr)) {
+            this.charFilters.push({ id: match.codeStr, type: 'exclude' });
+            this._renderFilterChips();
+            this.onFilterChange([...this.charFilters]);
         }
-        inputEl.value = '';
-        dropdownEl.classList.remove('show');
-        inputEl.focus();
+        this.inputEl.value = '';
+        this.dropdownEl.classList.remove('show');
+        this.inputEl.focus();
     }
 
-    function setActiveItem(items) {
+    _setActiveItem(items) {
         if (!items || items.length === 0) return;
         Array.from(items).forEach(item => item.classList.remove('active'));
-        if (currentFocus >= items.length) currentFocus = 0;
-        if (currentFocus < 0) currentFocus = items.length - 1;
-        items[currentFocus].classList.add('active');
-        items[currentFocus].scrollIntoView({ block: 'nearest' });
+        if (this.currentFocus >= items.length) this.currentFocus = 0;
+        if (this.currentFocus < 0) this.currentFocus = items.length - 1;
+        items[this.currentFocus].classList.add('active');
+        items[this.currentFocus].scrollIntoView({ block: 'nearest' });
     }
 
-    inputEl.addEventListener('keydown', (e) => {
-        const items = dropdownEl.querySelectorAll('.dropdown-item');
-        if (!dropdownEl.classList.contains('show') || items.length === 0) return;
+    _handleKeydown(e) {
+        const items = this.dropdownEl.querySelectorAll('.dropdown-item');
+        if (!this.dropdownEl.classList.contains('show') || items.length === 0) return;
 
         if (e.key === 'ArrowDown') {
-            currentFocus++;
-            setActiveItem(items);
+            this.currentFocus++;
+            this._setActiveItem(items);
         } else if (e.key === 'ArrowUp') {
-            currentFocus--;
-            setActiveItem(items);
+            this.currentFocus--;
+            this._setActiveItem(items);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            if (currentFocus > -1) {
-                items[currentFocus].dispatchEvent(new MouseEvent('mousedown'));
+            if (this.currentFocus > -1) {
+                items[this.currentFocus].dispatchEvent(new MouseEvent('mousedown'));
             } else if (items.length === 1) {
                 items[0].dispatchEvent(new MouseEvent('mousedown'));
             }
         }
-    });
-
-    inputEl.addEventListener('input', () => {
-        const query = inputEl.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    inputEl.addEventListener('focus', () => {
-        const query = inputEl.value.trim().toLowerCase();
-        renderDropdown(getFilteredKnownChars(query));
-    });
-
-    inputEl.addEventListener('click', () => {
-        if (!dropdownEl.classList.contains('show')) {
-            const query = inputEl.value.trim().toLowerCase();
-            renderDropdown(getFilteredKnownChars(query));
-        }
-    });
-
-    inputEl.addEventListener('blur', () => {
-        dropdownEl.classList.remove('show');
-    });
-
-    if (fuzzyToggleEl) {
-        fuzzyToggleEl.addEventListener('change', () => {
-            triggerDropdownRefresh();
-            // Keep focus on input so they can keep typing
-            inputEl.focus();
-        });
     }
 
-    // Render chips if there's any initial ones provided synchronously
-    renderFilterChips();
+    /**
+     * Updates the underlying UI state with an entirely new filter configuration array.
+     * Useful for reacting to asynchronous source changes (like chrome.storage).
+     * @param {Array<Object>} newFilters - The new filters to replace existing ones.
+     */
+    updateFilters(newFilters) {
+        this.charFilters = [...newFilters];
+        this._renderFilterChips();
+    }
 
-    // Expose a public API to allow replacing filters async 
-    // (like when `chrome.storage` resolves)
-    return {
-        updateFilters: (newFilters) => {
-            charFilters = [...newFilters];
-            renderFilterChips();
-        },
-        isDefaultState: () => {
-            const hasCustomFilters = charFilters.length > 0;
-            const hasExcludedCategory = Object.values(categoryStates).some(s => s === 'exclude');
-            return !hasCustomFilters && !hasExcludedCategory;
-        }
-    };
+    /**
+     * Checks whether the current UI state represents the default state logic.
+     * A filtered UI is considered modified if any category toggles are explicitly disabled,
+     * or if any individual custom filter chips have been added.
+     * @returns {boolean} True if in default default state, false otherwise.
+     */
+    isDefaultState() {
+        const hasCustomFilters = this.charFilters.length > 0;
+        const hasExcludedCategory = Object.values(this.categoryStates).some(s => s === 'exclude');
+        return !hasCustomFilters && !hasExcludedCategory;
+    }
+}
+
+// Global factory to maintain backward compatibility with popup.js and panel.js calls
+function initFilterUI(config) {
+    return new FilterUI(config);
 }

@@ -55,15 +55,13 @@
 
     <!-- Actions -->
     <div class="popup-section popup-actions" style="gap: 8px;">
-      <button id="panel-btn" class="btn-secondary" title="Open detail panel">
+      <button id="panel-btn" class="btn-secondary" title="Open detail panel" style="flex: 1;">
         Open Detail Panel ↗
       </button>
-      <button id="settings-toggle" class="btn-icon-only" title="Settings"
-        style="border-color: rgba(124, 58, 237, 0.2) !important;">⚙</button>
     </div>
 
-    <!-- Settings (hidden by default) -->
-    <div class="popup-section" id="settings-section" style="display: none;">
+    <!-- Settings -->
+    <div class="popup-section" id="settings-section">
       <div class="section-label">⚙ Settings</div>
       <label class="setting-row">
         <input type="checkbox" id="opt-autoscan">
@@ -130,6 +128,13 @@
           </details>
         </div>
       </div>
+      <label class="setting-row" style="margin-bottom: 8px;">
+        <span style="font-size: 13px;">Highlight Style:</span>
+        <select id="opt-hl-style" class="setting-select" style="margin-left: auto;">
+          <option value="nimbus">Nimbus (Subtle)</option>
+          <option value="classic">Classic (Solid)</option>
+        </select>
+      </label>
       <label class="setting-row">
         <input type="checkbox" id="opt-nbsp">
         <span>Detect NBSP (U+00A0)</span>
