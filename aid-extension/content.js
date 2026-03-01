@@ -57,6 +57,28 @@
             applyTheme('hitchhiker');
         }
 
+        // Add calming yet stressful message for hitchhiker theme
+        if (settings.visualProfile === 'hitchhiker' && pageSuspicion && pageSuspicion.totalCodePoints > 0) {
+            let notice = document.getElementById('ass-hitchhiker-notice');
+            if (!notice) {
+                notice = document.createElement('div');
+                notice.id = 'ass-hitchhiker-notice';
+                document.body.prepend(notice);
+            }
+
+            // Build the nicely calming yet fully stressful breakdown
+            const counts = getCategoryBreakdown(allResults);
+            let typesStr = Object.entries(counts)
+                .map(([type, count]) => `${count} ${type}`)
+                .join(', ')
+                .replace(/,([^,]*)$/, ' and$1'); // "A, B and C" formatting
+
+            notice.textContent = `...but there appear to be ${pageSuspicion.totalCodePoints} invisible characters indicating hidden messages within this Earth media. Specifically, we've detected ${typesStr}. Fortunately, they appear mostly harmless.`;
+        } else {
+            const notice = document.getElementById('ass-hitchhiker-notice');
+            if (notice) notice.remove();
+        }
+
         chrome.runtime.sendMessage({
             action: 'scanComplete',
             suspicion: pageSuspicion,
@@ -107,7 +129,7 @@
                     const el = node.parentElement;
                     if (!el) return NodeFilter.FILTER_REJECT;
                     // Skip our own injected elements
-                    if (el.closest('.ass-tooltip, .ass-marker, .ass-hl'))
+                    if (el.closest('.ass-tooltip, .ass-marker, .ass-hl, #ass-hitchhiker-notice'))
                         return NodeFilter.FILTER_REJECT;
                     // Skip elements hidden by CSS (responsive clones, etc.)
                     if (el.getClientRects().length === 0)

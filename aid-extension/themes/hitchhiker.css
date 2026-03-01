@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
 /* ─── ASS – Hitchhiker's Guide Theme ───────────────────────────────────────── */
 
 /* 
@@ -26,17 +28,32 @@ body {
 
 body::before {
     content: "DON'T PANIC";
-    display: block !important;
+    display: inline-block !important;
     text-align: left !important;
     font-size: 3em !important;
     line-height: 1 !important;
     font-weight: bold !important;
     color: #ff0055 !important;
-    margin-bottom: 20px !important;
-    padding-right: 210px !important;
-    /* Forces wrap on narrow side panels to avoid buttons */
+    padding-right: 20px !important;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
     font-family: 'Arial Rounded MT Bold', 'Arial Black', sans-serif !important;
+    vertical-align: middle !important;
+}
+
+#ass-hitchhiker-notice {
+    display: inline-block !important;
+    font-family: 'VT323', monospace !important;
+    color: #fac610 !important;
+    /* Vivid Yellow */
+    font-size: 1.5em !important;
+    font-style: italic !important;
+    vertical-align: middle !important;
+    max-width: 65% !important;
+    line-height: 1.2 !important;
+    text-shadow: 0 0 5px rgba(250, 198, 16, 0.5), 1px 1px 0 rgba(0, 0, 0, 0.8) !important;
+    pointer-events: none !important;
+    margin-bottom: 20px !important;
+    letter-spacing: 0.5px !important;
 }
 
 /* Make text generally green, except for specific elements that might need normal contrast */
