@@ -307,7 +307,6 @@ function extractDetectedCodepoints(detections) {
         if (d.codePoints && Array.isArray(d.codePoints)) {
             d.codePoints.forEach(cp => {
                 // The codePoints are sometimes formatted with extra spaces or as raw strings.
-                // Assuming format 'U+XXXX' or similar based on `content.js` `group[0].char.codePointAt(0).toString(16)`
                 const cleaned = cp.replace(/\s/g, '').toUpperCase();
                 if (cleaned.startsWith('U+')) codepoints.add(cleaned);
             });
@@ -319,4 +318,19 @@ function extractDetectedCodepoints(detections) {
 // Global factory to maintain backward compatibility with popup.js and panel.js calls
 function initFilterUI(config) {
     return new FilterUI(config);
+}
+
+function applyTheme(themeName) {
+    let link = document.getElementById('ass-theme-link');
+    if (!themeName || themeName === 'default') {
+        if (link) link.remove();
+        return;
+    }
+    if (!link) {
+        link = document.createElement('link');
+        link.id = 'ass-theme-link';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+    }
+    link.href = `themes/${themeName}.css`;
 }

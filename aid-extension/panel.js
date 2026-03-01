@@ -86,24 +86,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 100);
     });
 
-    function applyTheme(themeName) {
-        let link = document.getElementById('ass-theme-link');
-        if (!themeName || themeName === 'default') {
-            if (link) link.remove();
-            return;
-        }
-        if (!link) {
-            link = document.createElement('link');
-            link.id = 'ass-theme-link';
-            link.rel = 'stylesheet';
-            document.head.appendChild(link);
-        }
-        link.href = `themes/${themeName}.css`;
-    }
+    // applyTheme is now provided globally by shared-ui.js
 
     // ─── Rendering ───────────────────────────────────────────────────
 
-    function renderResults(r) {
+    async function renderResults(r) {
         if (!r?.suspicion) {
             emptyState.style.display = 'block';
             resultsContainer.style.display = 'none';
@@ -117,8 +104,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer.style.display = 'block';
         pageUrl.textContent = r.url || '';
 
-        // Summary
-        const s = r.suspicion;
+        renderSummary(r.suspicion);
+        renderCategoryBreakdown(r.categoryBreakdown);
+
+        if (r.settings) {
+            await loadFilterSettings();
+            applyTheme(r.settings.visualProfile);
+        }
+
+        if (typeof filterUI !== 'undefined') {
+            const codepoints = extractDetectedCodepoints(r.detections);
+            filterUI.setDetectedCodepoints(codepoints);
+        }
+
+        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
+        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
+        updateSettingsAlert();
+
+        renderTagRuns(r.tagRunSummary, sneakyDecodedStrings);
+    }
+
+    function renderSummary(s) {
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
         summaryGrid.innerHTML = `
             <div class="summary-item summary-item-full level-${s.suspicionLevel}">
@@ -145,42 +151,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="summary-item-label">Longest Tag Run</div>
                 <div class="summary-item-value">${s.maxConsecutiveUnicodeTags}</div>
             </div>`;
+    }
 
-        // Category breakdown
-        if (r.categoryBreakdown) {
-            const entries = Object.entries(r.categoryBreakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-            if (entries.length) {
-                categorySection.style.display = 'block';
-                categoryGrid.innerHTML = entries.map(([name, count]) =>
-                    `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
-                ).join('');
-            } else {
-                categorySection.style.display = 'none';
-            }
+    function renderCategoryBreakdown(breakdown) {
+        if (!breakdown) {
+            categorySection.style.display = 'none';
+            return;
         }
-
-        // Sync drawer controls with scan results settings
-        if (r.settings) {
-            loadFilterSettings();
-            applyTheme(r.settings.visualProfile);
+        const entries = Object.entries(breakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+        if (entries.length) {
+            categorySection.style.display = 'block';
+            categoryGrid.innerHTML = entries.map(([name, count]) =>
+                `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
+            ).join('');
+        } else {
+            categorySection.style.display = 'none';
         }
+    }
 
-        // Pass detected codepoints to filter dropdown
-        if (typeof filterUI !== 'undefined') {
-            const codepoints = extractDetectedCodepoints(r.detections);
-            filterUI.setDetectedCodepoints(codepoints);
-        }
-
-        // Detections
-        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
-        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
-        updateSettingsAlert();
-
-        // Tag runs
+    function renderTagRuns(tagSummary, decodedStrings) {
         const combinedSummary = [];
-        if (r.tagRunSummary) combinedSummary.push(r.tagRunSummary);
-        if (sneakyDecodedStrings.length) {
-            combinedSummary.push(...sneakyDecodedStrings.map(s => `'${s}'`));
+        if (tagSummary) combinedSummary.push(tagSummary);
+        if (decodedStrings.length) {
+            combinedSummary.push(...decodedStrings.map(s => `'${s}'`));
         }
 
         if (combinedSummary.length > 0) {
@@ -191,12 +184,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Helper to format binary string into 8-bit blocks
     function formatBinary(binaryStr) {
         return (binaryStr.match(/.{1,8}/g) || []).join(' ');
     }
 
-    // Helper to convert binary string to Hex
     function toHex(binStr) {
         if (!binStr) return '';
         const bytes = binStr.match(/.{1,8}/g) || [];
@@ -206,8 +197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join(' ');
     }
 
-    // Helper to decode binary string (8-bit ASCII/UTF-8)
-    // Returns full decoding, and optionally a "trimmed" version if it yields better results
     function decodeBinary(binStr) {
         if (!binStr || binStr.length < 8) return { full: '', printable: false };
 
@@ -409,6 +398,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelFilterDropdown = document.getElementById('panel-filter-dropdown');
     const panelFilterChips = document.getElementById('panel-filter-chips');
     const panelOptFuzzySearch = document.getElementById('panel-opt-fuzzy-search');
+    const panelVisualProfile = document.getElementById('panel-visual-profile');
+    const panelAutoHitchhiker = document.getElementById('panel-opt-auto-hitchhiker');
+    const panelAhThreshold = document.getElementById('panel-opt-ah-threshold');
+    const panelHighlightStyle = document.getElementById('panel-highlight-style');
     const panelOptNbsp = document.getElementById('panel-opt-nbsp');
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
@@ -571,11 +564,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             autoScan: false, // Don't change autoScan from panel
             charFilters: charFilters,
             fuzzySearch: panelOptFuzzySearch.checked,
+            visualProfile: panelVisualProfile ? panelVisualProfile.value : 'default',
+            autoHitchhiker: panelAutoHitchhiker ? panelAutoHitchhiker.checked : false,
+            autoHitchhikerThreshold: panelAhThreshold ? Math.max(1, parseInt(panelAhThreshold.value, 10) || 8) : 8,
             detectNbsp: panelOptNbsp.checked,
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
-            highlightStyle: currentHighlightStyle,
+            highlightStyle: panelHighlightStyle ? panelHighlightStyle.value : 'nimbus',
             sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
@@ -584,7 +580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Preserve autoScan from the loaded settings
         chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
             if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
-            if (resp?.settings?.visualProfile !== undefined) s.visualProfile = resp.settings.visualProfile;
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
             triggerRescan();
         });
@@ -599,6 +594,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Checkbox & number input handlers
     [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
+    if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
+        saveFilterSettings();
+        applyTheme(panelVisualProfile.value);
+    });
+    if (panelAutoHitchhiker) panelAutoHitchhiker.addEventListener('change', saveFilterSettings);
+    if (panelAhThreshold) panelAhThreshold.addEventListener('input', saveFilterSettings);
+    if (panelHighlightStyle) panelHighlightStyle.addEventListener('change', saveFilterSettings);
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
 
@@ -609,10 +611,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         charFilters = settings.charFilters || [];
         panelOptNbsp.checked = settings.detectNbsp || false;
         panelOptFuzzySearch.checked = settings.fuzzySearch ?? true;
-        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
-        panelOptCc.checked = settings.detectControlChars || false;
-        panelOptZs.checked = settings.detectSpaceSeparators || false;
+        if (panelVisualProfile) panelVisualProfile.value = settings.visualProfile || 'default';
+        if (panelAutoHitchhiker) panelAutoHitchhiker.checked = settings.autoHitchhiker || false;
+        if (panelAhThreshold) panelAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
+        if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
+        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {
