@@ -19,6 +19,7 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 - 📤 **Export** — JSON and CSV reports matching the Python output format
 - ⚙️ **Configurable** — toggle confusable spaces, control chars (Cc), space separators (Zs)
 - 🔒 **Privacy-first** — runs entirely locally, no data collection
+- 🛸 **Hitchhiker's Guide Theme** — auto-triggers on high-volume detections with a retro terminal aesthetic and dynamic calming notice
 
 ## Installation
 
@@ -43,6 +44,7 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 4. **Hover** over highlights for character details
 5. **Click** highlights to expand decoded text inline
 6. **Open Detail Panel** for the full report with category breakdown and export
+- 🛸 **Consult the Guide** — In Hitchhiker mode, look for the inline link in the header to jump straight to the details
 
 ### Settings
 
@@ -54,6 +56,8 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 | Detect confusable spaces | Off | Thin space, hangul filler, etc. (excludes NBSP if toggled separately) |
 | Detect control chars (Cc) | Off | Unicode Cc category (excludes TAB/LF/CR) |
 | Detect space separators (Zs) | Off | Unicode Zs category (excludes ASCII space) |
+| Auto-Hitchhiker | Off | Automatically switch to the HHG theme on suspicious pages |
+| HHG Threshold | 8 | Total code points required to trigger the guide theme |
 
 ## Suspicion Levels
 

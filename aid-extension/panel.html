@@ -9,26 +9,29 @@
     <link rel="stylesheet" href="panel.css">
 </head>
 
-<body>
+<body class="panel-body">
     <div class="panel-container">
         <!-- Header -->
         <div class="panel-header">
+            <!-- Top Controls -->
+            <div class="panel-top-controls">
+                <button id="expand-all-btn" class="header-link">Expand All</button>
+                <span class="control-separator">|</span>
+                <div class="export-wrapper">
+                    <button id="header-export-btn" class="header-link">Export ▾</button>
+                    <div id="header-export-menu" class="export-menu hidden">
+                        <div class="export-menu-item" data-format="csv">CSV</div>
+                        <div class="export-menu-item" data-format="json">JSON</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="panel-header-row">
                 <div class="panel-logo">
                     <img src="icons/icon48.png" alt="ASS" width="20" height="20">
                     <span class="panel-title">ASS – Detection Report</span>
                 </div>
-                <div class="panel-header-actions"
-                    style="position: relative; display: flex; align-items: center; gap: 8px;">
-                    <button id="expand-all-btn" class="header-link"
-                        style="background: none; border: none; padding: 0;">Expand All</button>
-                    <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
-                    <button id="header-export-btn" class="header-link"
-                        style="background: none; border: none; padding: 0;">Export ▾</button>
-                    <div id="header-export-menu" class="export-menu hidden">
-                        <div class="export-menu-item" data-format="csv">CSV</div>
-                        <div class="export-menu-item" data-format="json">JSON</div>
-                    </div>
+                <div class="panel-header-actions">
                     <button class="panel-close" id="close-btn" title="Close panel">✕</button>
                 </div>
             </div>
