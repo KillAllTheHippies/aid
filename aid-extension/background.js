@@ -90,6 +90,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 handleAutoScanToggle(message.settings);
             });
             return true;
+
+        case 'openPanel':
+            if (chrome.sidePanel) {
+                chrome.sidePanel.open({ tabId: sender.tab.id });
+            }
+            break;
     }
 });
 

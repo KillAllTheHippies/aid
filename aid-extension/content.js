@@ -73,7 +73,15 @@
                 .join(', ')
                 .replace(/,([^,]*)$/, ' and$1'); // "A, B and C" formatting
 
-            notice.textContent = `...but there appear to be ${pageSuspicion.totalCodePoints} invisible characters indicating hidden messages within this Earth media. Specifically, we've detected ${typesStr}. Fortunately, they appear mostly harmless.`;
+            notice.innerHTML = `...but there appear to be ${pageSuspicion.totalCodePoints} invisible characters indicating hidden messages within this Earth media. Specifically, we've detected ${typesStr}. Fortunately, they appear mostly harmless. <a href="#" id="ass-hitchhiker-link">Consult the Guide for more details.</a>`;
+
+            const link = notice.querySelector('#ass-hitchhiker-link');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    chrome.runtime.sendMessage({ action: 'openPanel' });
+                });
+            }
         } else {
             const notice = document.getElementById('ass-hitchhiker-notice');
             if (notice) notice.remove();
