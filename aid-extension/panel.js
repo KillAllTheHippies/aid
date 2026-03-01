@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ─── Rendering ───────────────────────────────────────────────────
 
-    function renderResults(r) {
+    async function renderResults(r) {
         if (!r?.suspicion) {
             emptyState.style.display = 'block';
             resultsContainer.style.display = 'none';
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderCategoryBreakdown(r.categoryBreakdown);
 
         if (r.settings) {
-            loadFilterSettings();
+            await loadFilterSettings();
             applyTheme(r.settings.visualProfile);
         }
 
