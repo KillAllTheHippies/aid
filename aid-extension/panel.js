@@ -4,6 +4,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Keep a long-lived connection open so the background script knows the panel is alive
+    const port = chrome.runtime.connect({ name: 'ass-sidepanel' });
+    port.onMessage.addListener(msg => {
+        if (msg.action === 'close') window.close();
+    });
+
     window.onerror = function (msg, url, line, col, error) {
         document.body.innerHTML += `<div style="color:red; font-family:monospace; padding: 10px; background: black; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999;">ERROR: ${msg}<br/>Line: ${line}<br/>${error?.stack || ''}</div>`;
     };

@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     panelBtn.addEventListener('click', async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (chrome.sidePanel) {
-            chrome.sidePanel.open({ tabId: tab.id });
+            chrome.runtime.sendMessage({ action: 'togglePanel', tabId: tab.id });
         } else {
             window.close(); // Firefox: sidebar is accessible via sidebar_action
         }
