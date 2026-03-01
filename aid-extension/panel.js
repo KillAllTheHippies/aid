@@ -528,13 +528,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Search filter category toggles
-    // Sync checkbox toggles visibility with the details toggle
-    const filterToggle = document.getElementById('filter-toggle');
-    const filterTogglesDiv = document.getElementById('panel-filter-toggles');
-    filterToggle.addEventListener('toggle', () => {
-        filterTogglesDiv.classList.toggle('collapsed', !filterToggle.open);
-    });
+    // Search filter category toggles removed (handled by details panel directly)
+
 
     // ─── Detection Cards ─────────────────────────────────────────────
 
