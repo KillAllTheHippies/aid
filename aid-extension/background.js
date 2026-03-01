@@ -31,6 +31,18 @@ const BADGE_COLORS = {
 // ─── State ──────────────────────────────────────────────────────────────────
 
 const tabResults = new Map(); // tabId → scan results
+const sidepanelPorts = new Set(); // tracks active side panel connections
+
+// Track side panel connections
+chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === 'ass-sidepanel') {
+        sidepanelPorts.add(port);
+        port.onDisconnect.addListener(() => {
+            sidepanelPorts.delete(port);
+        });
+    }
+});
+
 
 // ─── Initialization ─────────────────────────────────────────────────────────
 
@@ -94,6 +106,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'openPanel':
             if (chrome.sidePanel) {
                 chrome.sidePanel.open({ tabId: sender.tab.id });
+            }
+            break;
+
+        case 'togglePanel':
+            if (chrome.sidePanel) {
+                if (sidepanelPorts.size > 0) {
+                    for (const port of sidepanelPorts) {
+                        try { port.postMessage({ action: 'close' }); } catch (e) { }
+                    }
+                } else {
+                    const targetTabId = message.tabId || sender.tab.id;
+                    chrome.sidePanel.open({ tabId: targetTabId });
+                }
             }
             break;
     }
