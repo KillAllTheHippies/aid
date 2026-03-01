@@ -252,12 +252,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         alertEl.classList.toggle('hidden', !isNonDefault);
     }
 
-    // ─── Open Panel ─────────────────────────────────────────────────
+    // ─── Toggle Panel ───────────────────────────────────────────────
 
     panelBtn.addEventListener('click', async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (chrome.sidePanel) {
-            chrome.runtime.sendMessage({ action: 'togglePanel', tabId: tab.id });
+            chrome.runtime.sendMessage({ action: 'pingPanel' }, (response) => {
+                // Ignore the error if the port is closed
+                const _ = chrome.runtime.lastError;
+                if (response && response.open) {
+                    chrome.runtime.sendMessage({ action: 'closePanel' });
+                } else {
+                    chrome.runtime.sendMessage({ action: 'openPanel', tabId: tab.id });
+                }
+            });
         } else {
             window.close(); // Firefox: sidebar is accessible via sidebar_action
         }
