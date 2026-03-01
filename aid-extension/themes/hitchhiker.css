@@ -122,6 +122,8 @@ div[style*="color:#888"] {
 /* Ensure the inserted text contrasts against the original green text */
 .ass-marker {
     color: #fac610 !important;
+    padding: 0 4px !important;
+    border-radius: 3px !important;
 }
 
 /* Make standard highlights pop with 'DON'T PANIC' red and vivid yellow */
@@ -140,8 +142,6 @@ div[style*="color:#888"] {
 .ass-hl:hover .ass-marker {
     color: #ffffff !important;
     background: #ff0055 !important;
-    padding: 0 4px !important;
-    border-radius: 3px !important;
 }
 
 .ass-hl.expanded .ass-marker {
