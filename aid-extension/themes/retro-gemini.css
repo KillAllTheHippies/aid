@@ -1,4 +1,4 @@
-/* ─── AID Popup Styles - MILITARY SCANNER THEME ────────────── */
+/* ─── AID Popup Styles ────────────────────────────────────────────────────── */
 
 * {
     margin: 0;
@@ -7,33 +7,24 @@
 }
 
 body {
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
     font-size: 13px;
-    background: #000000;
-    color: #4ade80;
+    background: #0f0f1a;
+    color: #e0e0e0;
     min-width: 320px;
     max-width: 360px;
+}
+
+.popup-container {
+    padding: 0;
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 
 .popup-header {
     padding: 14px 16px;
-    background: #000000;
-    border-bottom: 1px solid #4ade80;
-    position: relative;
-    overflow: hidden;
-}
-
-.popup-header::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: #4ade80;
-    box-shadow: 0 0 8px #4ade80;
+    background: linear-gradient(135deg, #1a1a3e 0%, #0f0f2a 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .popup-logo {
@@ -43,53 +34,48 @@ body {
 }
 
 .popup-logo img {
-    border-radius: 0;
-    filter: grayscale(100%) sepia(100%) hue-rotate(70deg) saturate(300%) contrast(150%);
-    border: 1px solid #4ade80;
-    padding: 2px;
+    border-radius: 6px;
 }
 
 .popup-title {
     font-size: 16px;
     font-weight: 800;
-    letter-spacing: 2px;
-    color: #4ade80;
-    text-transform: uppercase;
-    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+    letter-spacing: 1.5px;
+    background: linear-gradient(90deg, #00ff88, #00aaff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .popup-subtitle {
     font-size: 10px;
-    color: #22c55e;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.3px;
 }
 
 /* ─── Sections ───────────────────────────────────────────────────────────── */
 
 .popup-section {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .section-label {
     font-size: 11px;
-    font-weight: 700;
-    color: #4ade80;
+    font-weight: 600;
+    color: #8888aa;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.5px;
     margin-bottom: 8px;
-    display: inline-block;
-    border-bottom: 1px solid #4ade80;
-    padding-bottom: 2px;
 }
+
+
 
 .setting-block-label {
     font-size: 11px;
-    color: #22c55e;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}/* ─── AID Detail Panel Styles ─────────────────────────────────────────────── */
+    color: #bbb;
+}
+/* ─── AID Detail Panel Styles ─────────────────────────────────────────────── */
 
 * {
     margin: 0;
@@ -98,10 +84,10 @@ body {
 }
 
 body {
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
     font-size: 13px;
-    background: #000000;
-    color: #4ade80;
+    background: #0d0d1a;
+    color: #e0e0e0;
     min-width: 300px;
 }
 
@@ -113,8 +99,8 @@ body {
 
 .panel-header {
     padding: 12px 16px;
-    background: #000000; border: 1px solid #4ade80;
-    border-bottom: 1px solid #4ade80;
+    background: linear-gradient(135deg, #1a1a3e 0%, #0f0f2a 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -135,13 +121,11 @@ body {
 .panel-title {
     font-size: 14px;
     font-weight: 700;
-    color: #4ade80; border: 1px solid #4ade80;
-    -webkit-
-    
-    
-
-    text-transform: uppercase;
-    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);}
+    background: linear-gradient(90deg, #00ff88, #00aaff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
 
 .panel-header-actions {
     display: flex;
@@ -157,7 +141,7 @@ body {
     padding: 4px 10px;
     background: rgba(74, 222, 128, 0.05);
     border: 1px solid rgba(74, 222, 128, 0.2) !important;
-    border-radius: 0;
+    border-radius: 6px;
     transition: all 0.2s;
 }
 
@@ -172,13 +156,13 @@ body {
     top: 100%;
     right: 32px;
     margin-top: 6px;
-    background: #000000;
-    border: 1px solid #4ade80;
-    border-radius: 0;
+    background: #1a1a24;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
     padding: 4px 0;
     min-width: 80px;
     z-index: 1000;
-    box-shadow: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .export-menu.hidden {
@@ -189,23 +173,23 @@ body {
     padding: 6px 16px;
     font-size: 12px;
     font-weight: 500;
-    color: #22c55e;
+    color: #ccc;
     cursor: pointer;
     text-align: left;
 }
 
 .export-menu-item:hover {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     color: #fff;
 }
 
 .panel-close {
     width: 28px;
     height: 28px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #166534;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #888;
     font-size: 14px;
     cursor: pointer;
     display: flex;
@@ -251,7 +235,7 @@ body {
 .empty-text {
     font-size: 16px;
     font-weight: 600;
-    color: #166534;
+    color: #888;
     margin-bottom: 8px;
 }
 
@@ -264,19 +248,17 @@ body {
 
 .panel-section {
     padding: 14px 16px;
-    border-bottom: 1px solid #4ade80;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .section-header {
     font-size: 12px;
     font-weight: 700;
-    color: #4ade80;
+    color: #8888aa;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 10px;
-
-    border-bottom: 1px solid #4ade80;
-    padding-bottom: 4px;}
+}
 
 /* ─── Summary Grid ───────────────────────────────────────────────────────── */
 
@@ -285,8 +267,8 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px 16px;
     background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #4ade80;
-    border-radius: 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
     padding: 12px 16px;
     margin-bottom: 8px;
 }
@@ -312,7 +294,7 @@ body {
 
 .summary-item-label {
     font-size: 10px;
-    color: #166534;
+    color: #888;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
@@ -321,8 +303,8 @@ body {
 .summary-item-value {
     font-size: 15px;
     font-weight: 700;
-    color: #4ade80;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    color: #eee;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .summary-item.level-info .summary-item-value {
@@ -355,7 +337,7 @@ body {
 .severity-dot {
     width: 10px;
     height: 10px;
-    border-radius: 0;
+    border-radius: 50%;
     display: inline-block;
 }
 
@@ -376,16 +358,16 @@ body {
 }
 
 .detection-card {
-    background: rgba(74, 222, 128, 0.1);
-    border: 1px solid #4ade80;
-    border-radius: 0;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 6px;
     transition: border-color 0.2s;
 }
 
 .detection-card:hover {
-    border-color: #4ade80;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .panel-header-row {
@@ -400,7 +382,7 @@ body {
     gap: 12px;
     padding-bottom: 12px;
     margin-bottom: 12px;
-    border-bottom: 1px solid #4ade80;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 12px;
 }
 
@@ -429,10 +411,10 @@ body {
 .detection-copy {
     background: transparent;
     border: none;
-    color: #166534;
+    color: #888;
     cursor: pointer;
     padding: 4px;
-    border-radius: 0;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -441,7 +423,7 @@ body {
 }
 
 .detection-copy:hover {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     color: #fff;
 }
 
@@ -453,17 +435,17 @@ body {
 
 .detection-card-count {
     font-size: 11px;
-    color: #166534;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    color: #888;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .detection-card-context {
     font-size: 11px;
     color: #777;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     padding: 4px 6px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 0;
+    border-radius: 4px;
     margin: 6px 0;
     word-break: break-all;
     overflow: hidden;
@@ -473,14 +455,14 @@ body {
 .detection-card-decoded {
     font-size: 12px;
     color: #00ff88;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     margin: 4px 0;
 }
 
 .detection-card-detail {
     font-size: 10px;
-    color: #166534;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    color: #888;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     margin: 0 0 4px;
 }
 
@@ -512,8 +494,8 @@ body {
     justify-content: space-between;
     padding: 4px 8px;
     font-size: 12px;
-    background: rgba(74, 222, 128, 0.1);
-    border-radius: 0;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
 }
 
 .char-name {
@@ -524,7 +506,7 @@ body {
 .char-freq {
     font-weight: 700;
     color: #00aaff;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     min-width: 40px;
     text-align: right;
 }
@@ -532,12 +514,12 @@ body {
 /* ─── Tag Runs ───────────────────────────────────────────────────────────── */
 
 .tag-runs {
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     font-size: 12px;
     color: #00ff88;
     background: rgba(0, 255, 136, 0.05);
     padding: 8px 12px;
-    border-radius: 0;
+    border-radius: 6px;
     border: 1px solid rgba(0, 255, 136, 0.15);
     word-break: break-all;
 }
@@ -552,18 +534,18 @@ body {
 .btn-export {
     flex: 1;
     padding: 8px 12px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #22c55e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ccc;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .btn-export:hover {
-    background: rgba(74, 222, 128, 0.1);
-    border-color: #4ade80;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
     color: white;
 }
 
@@ -576,15 +558,15 @@ body {
 
 .sb-payload-block {
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 0;
+    border-radius: 6px;
     padding: 8px;
-    border: 1px solid #4ade80;
+    border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .sb-payload-label {
     font-size: 9px;
     font-weight: 800;
-    color: #166534;
+    color: #888;
     margin-bottom: 6px;
     letter-spacing: 0.05em;
 }
@@ -595,13 +577,13 @@ body {
     justify-content: space-between;
     background: rgba(0, 255, 136, 0.08);
     border: 1px solid rgba(0, 255, 136, 0.2);
-    border-radius: 0;
+    border-radius: 4px;
     padding: 6px 8px;
     margin-bottom: 8px;
 }
 
 .sb-decoded-text {
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     font-size: 14px;
     font-weight: 600;
     color: #00ff88;
@@ -623,7 +605,7 @@ body {
 }
 
 .sb-data-value {
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     font-size: 11px;
     color: #aaa;
     word-break: break-all;
@@ -657,10 +639,11 @@ body {
 
 .sb-hint {
     font-size: 10px;
-    color: #166534;
+    color: #888;
     font-style: italic;
     margin-bottom: 6px;
-}/* ─── Shared UID Filter Components ────────────────────────────────────────── */
+}
+/* ─── Shared UID Filter Components ────────────────────────────────────────── */
 
 /* ─── Active Filters Chips ────────────────────────────────────────────────── */
 
@@ -673,8 +656,8 @@ body {
 .filter-chip {
     display: inline-flex;
     align-items: center;
-    background: rgba(74, 222, 128, 0.1);
-    border-radius: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
     font-size: 10px;
     overflow: hidden;
 }
@@ -703,14 +686,14 @@ body {
 }
 
 .filter-chip[data-type="disabled"] .filter-chip-label {
-    color: #166534;
+    color: #888;
     text-decoration: line-through;
 }
 
 .filter-chip-label {
     padding: 2px 6px;
-    color: #4ade80;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    color: #eee;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .filter-chip-remove {
@@ -730,14 +713,14 @@ body {
 .search-filter-group {
     margin: 6px 0;
     padding: 6px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .search-filter-label {
     font-size: 10px;
-    color: #166534;
+    color: #888;
     display: block;
     margin-bottom: 6px;
     text-transform: uppercase;
@@ -754,9 +737,9 @@ body {
     display: inline-flex;
     align-items: center;
     cursor: pointer;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    border: 1px solid #4ade80;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     transition: background 0.2s;
     font-size: 11px;
     user-select: none;
@@ -764,9 +747,9 @@ body {
 }
 
 .search-filter-chip:hover {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     transform: translateY(-1px);
-    box-shadow: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .sf-toggle {
@@ -794,7 +777,7 @@ body {
 
 .sf-name {
     padding: 2px 6px 2px 0;
-    color: #22c55e;
+    color: #ccc;
 }
 
 /* ─── Filter Input & Dropdown ────────────────────────────────────────────── */
@@ -807,19 +790,19 @@ body {
 .setting-text-input {
     width: 100%;
     padding: 6px 8px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: #000;
-    color: #4ade80;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
     font-size: 12px;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     outline: none;
     box-sizing: border-box;
 }
 
 .setting-text-input:focus {
-    border-color: #4ade80;
-    background: #000;
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .filter-dropdown {
@@ -829,12 +812,12 @@ body {
     right: 0;
     max-height: 200px;
     overflow-y: auto;
-    background: #000000;
+    background: #1e1e1e;
     border: 1px solid rgba(124, 58, 237, 0.5);
-    border-radius: 0;
+    border-radius: 4px;
     z-index: 100;
     margin-top: 4px;
-    box-shadow: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .filter-dropdown.show {
@@ -844,9 +827,9 @@ body {
 .dropdown-item {
     padding: 6px 8px;
     font-size: 11px;
-    color: #22c55e;
+    color: #ccc;
     cursor: pointer;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .dropdown-item:hover,
@@ -867,9 +850,9 @@ body {
 .setting-drawer {
     margin-top: 8px;
     margin-bottom: 4px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .setting-drawer[open] {
@@ -879,7 +862,7 @@ body {
 .setting-drawer-label {
     padding: 6px 10px;
     font-size: 11px;
-    color: #166534;
+    color: #888;
     cursor: pointer;
     user-select: none;
     list-style: none;
@@ -914,9 +897,9 @@ body {
 }
 
 .seq-preview {
-    color: #166534;
+    color: #888;
     font-size: 11px;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .setting-input-row {
@@ -924,33 +907,33 @@ body {
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    color: #22c55e;
+    color: #bbb;
 }
 
 .setting-number {
     width: 64px;
     padding: 4px 6px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #4ade80;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
     font-size: 12px;
-    font-family: 'Cascadia Code', 'Fira Code', 'Courier New', Courier, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
     text-align: center;
     outline: none;
 }
 
 .setting-number:focus {
     border-color: rgba(124, 58, 237, 0.5);
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .setting-select {
     padding: 3px 6px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #4ade80;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e0e0e0;
     font-size: 11px;
     outline: none;
     cursor: pointer;
@@ -974,7 +957,7 @@ body {
     gap: 8px;
     padding: 6px 0;
     font-size: 12px;
-    color: #22c55e;
+    color: #bbb;
     cursor: pointer;
 }
 
@@ -997,7 +980,7 @@ body {
     gap: 6px;
     background: rgba(124, 58, 237, 0.1);
     padding: 2px 8px;
-    border-radius: 0;
+    border-radius: 12px;
     border: 1px solid rgba(124, 58, 237, 0.2);
     transition: all 0.2s;
 }
@@ -1012,10 +995,10 @@ body {
 .btn-primary {
     width: 100%;
     padding: 10px 16px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: #000000; border: 1px solid #4ade80;
-    color: #4ade80;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -1024,38 +1007,26 @@ body {
     justify-content: center;
     gap: 8px;
     transition: all 0.2s;
-
-    text-transform: uppercase;
-    letter-spacing: 1px;}
+}
 
 .btn-primary:hover {
-    background: #000000; border: 1px solid #4ade80;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     transform: translateY(-1px);
-    
-
-    text-transform: uppercase;
-    letter-spacing: 1px;}
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+}
 
 .btn-primary:active {
     transform: translateY(0);
-
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border: 1px solid #4ade80;}
+}
 
 .btn-primary:disabled {
     opacity: 0.5;
     cursor: wait;
-
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border: 1px solid #4ade80;}
+}
 
 .btn-primary.scanning {
-    background: #000000; border: 1px solid #4ade80;
-
-    text-transform: uppercase;
-    letter-spacing: 1px;}
+    background: linear-gradient(135deg, #1e40af, #5b21b6);
+}
 
 .btn-icon {
     font-size: 12px;
@@ -1064,10 +1035,10 @@ body {
 .btn-panel {
     width: 100%;
     padding: 10px 16px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: #000000; border: 1px solid #4ade80;
-    color: #4ade80;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -1076,33 +1047,26 @@ body {
     justify-content: center;
     gap: 8px;
     transition: all 0.2s;
-    
-
-    text-transform: uppercase;
-    letter-spacing: 1px;}
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
 
 .btn-panel:hover {
-    background: #000000; border: 1px solid #4ade80;
+    background: linear-gradient(135deg, #34d399, #10b981);
     transform: translateY(-1px);
-    
-
-    text-transform: uppercase;
-    letter-spacing: 1px;}
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
 
 .btn-panel:active {
     transform: translateY(0);
-
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border: 1px solid #4ade80;}
+}
 
 .btn-secondary {
     flex: 1;
     padding: 8px 12px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #22c55e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ccc;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1112,18 +1076,18 @@ body {
 }
 
 .btn-secondary:hover {
-    background: rgba(74, 222, 128, 0.1);
-    border-color: #4ade80;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
     color: white;
 }
 
 .btn-icon-only {
     width: 34px;
     height: 34px;
-    border: 1px solid #4ade80;
-    border-radius: 0;
-    background: rgba(74, 222, 128, 0.1);
-    color: #22c55e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ccc;
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -1133,7 +1097,7 @@ body {
 }
 
 .btn-icon-only:hover {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: white;
 }
 
@@ -1145,16 +1109,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(74, 222, 128, 0.1);
-    border-radius: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(74, 222, 128, 0.1);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* ─── Settings Alert ─────────────────────────────────────────────────────── */
@@ -1162,7 +1126,7 @@ body {
 .settings-alert {
     background: rgba(255, 152, 0, 0.1);
     border: 1px solid rgba(255, 152, 0, 0.3);
-    border-radius: 0;
+    border-radius: 6px;
     padding: 8px 12px;
     margin: 10px 0;
     font-size: 11px;
