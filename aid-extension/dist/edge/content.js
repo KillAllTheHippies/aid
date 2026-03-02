@@ -32,8 +32,6 @@
         isScanning = true;
         settings = opts || {};
 
-        applyTheme(settings.visualProfile);
-
         pauseObserver();
         removeHighlights();
         allResults = [];
@@ -52,13 +50,16 @@
 
         // Auto-Hitchhiker toggle logic
         const ahThreshold = settings.autoHitchhikerThreshold ?? 8;
-        if (settings.autoHitchhiker && settings.visualProfile !== 'hitchhiker' && pageSuspicion.totalCodePoints >= ahThreshold) {
-            settings.visualProfile = 'hitchhiker';
+        let isHitchhikerActive = false;
+        if (settings.autoHitchhiker && pageSuspicion.totalCodePoints >= ahThreshold) {
             applyTheme('hitchhiker');
+            isHitchhikerActive = true;
+        } else {
+            applyTheme('default');
         }
 
         // Add calming yet stressful message for hitchhiker theme
-        if (settings.visualProfile === 'hitchhiker' && pageSuspicion && pageSuspicion.totalCodePoints > 0) {
+        if (isHitchhikerActive && pageSuspicion && pageSuspicion.totalCodePoints > 0) {
             let notice = document.getElementById('ass-hitchhiker-notice');
             if (!notice) {
                 notice = document.createElement('div');
