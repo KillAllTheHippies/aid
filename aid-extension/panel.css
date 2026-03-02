@@ -183,6 +183,69 @@ body {
     margin-bottom: 10px;
 }
 
+/* ─── Summary Grid ───────────────────────────────────────────────────────── */
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-item-full {
+    grid-column: 1 / -1;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.summary-item-full:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.summary-item-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.summary-item-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #eee;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.summary-item.level-info .summary-item-value {
+    color: #00aaff;
+}
+
+.summary-item.level-medium .summary-item-value {
+    color: #FFC107;
+}
+
+.summary-item.level-high .summary-item-value {
+    color: #FF9800;
+}
+
+.summary-item.level-critical .summary-item-value {
+    color: #F44336;
+}
+
 /* ─── Detection Cards ────────────────────────────────────────────────────── */
 
 .detection-group-header {
