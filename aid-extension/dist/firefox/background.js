@@ -15,6 +15,9 @@ const DEFAULT_SETTINGS = {
     minSeqLength: 1,
     maxSeqLength: 0,  // 0 = no limit
     charFilters: [],  // array of { id: "U+FE0F", type: "exclude"|"include" }
+    visualProfile: 'default',
+    autoHitchhiker: false,
+    autoHitchhikerThreshold: 8,
 };
 
 const BADGE_COLORS = {
@@ -42,6 +45,10 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // ─── Content-Script Injection ───────────────────────────────────────────────
 
+/**
+ * Injects the required scanning scripts and CSS into the target tab, and triggers a scan.
+ * @param {number} tabId - The ID of the tab to inject into.
+ */
 async function injectAndScan(tabId) {
     const settings = await getSettings();
     try {
@@ -83,6 +90,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 handleAutoScanToggle(message.settings);
             });
             return true;
+
+        case 'openPanel':
+            if (chrome.sidePanel) {
+                chrome.sidePanel.open({ tabId: message.tabId || sender.tab.id });
+            }
+            break;
     }
 });
 

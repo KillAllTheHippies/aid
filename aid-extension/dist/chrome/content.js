@@ -8,6 +8,12 @@
     if (window.__assInjected) return;
     window.__assInjected = true;
 
+    // ─── Constants ──────────────────────────────────────────────────────────
+
+    const TOOLTIP_DELAY_MS = 500;
+    const TOOLTIP_HIDE_DELAY_MS = 200;
+    const TOOLTIP_CURSOR_GAP = 15;
+
     // ─── State ──────────────────────────────────────────────────────────────
 
     let allResults = [];    // { textNode, findings[] }[]
@@ -26,14 +32,14 @@
         isScanning = true;
         settings = opts || {};
 
+        applyTheme(settings.visualProfile);
+
         pauseObserver();
         removeHighlights();
         allResults = [];
 
-        // Collect visible text nodes
         const textNodes = collectTextNodes();
 
-        // Scan each text node for invisible characters
         for (const tn of textNodes) {
             const findings = scanTextNode(tn);
             if (findings.length) allResults.push({ textNode: tn, findings });
@@ -44,7 +50,43 @@
         applyHighlights();
         ensureTooltip();
 
-        // Notify background (badge + cached results)
+        // Auto-Hitchhiker toggle logic
+        const ahThreshold = settings.autoHitchhikerThreshold ?? 8;
+        if (settings.autoHitchhiker && settings.visualProfile !== 'hitchhiker' && pageSuspicion.totalCodePoints >= ahThreshold) {
+            settings.visualProfile = 'hitchhiker';
+            applyTheme('hitchhiker');
+        }
+
+        // Add calming yet stressful message for hitchhiker theme
+        if (settings.visualProfile === 'hitchhiker' && pageSuspicion && pageSuspicion.totalCodePoints > 0) {
+            let notice = document.getElementById('ass-hitchhiker-notice');
+            if (!notice) {
+                notice = document.createElement('div');
+                notice.id = 'ass-hitchhiker-notice';
+                document.body.prepend(notice);
+            }
+
+            // Build the nicely calming yet fully stressful breakdown
+            const counts = getCategoryBreakdown(allResults);
+            let typesStr = Object.entries(counts)
+                .map(([type, count]) => `${count} ${type}`)
+                .join(', ')
+                .replace(/,([^,]*)$/, ' and$1'); // "A, B and C" formatting
+
+            notice.innerHTML = `...but there appear to be ${pageSuspicion.totalCodePoints} invisible characters indicating hidden messages within this Earth media. Specifically, we've detected ${typesStr}. Fortunately, they appear mostly harmless. <a href="#" id="ass-hitchhiker-link">Consult the Guide for more details.</a>`;
+
+            const link = notice.querySelector('#ass-hitchhiker-link');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    chrome.runtime.sendMessage({ action: 'openPanel' });
+                });
+            }
+        } else {
+            const notice = document.getElementById('ass-hitchhiker-notice');
+            if (notice) notice.remove();
+        }
+
         chrome.runtime.sendMessage({
             action: 'scanComplete',
             suspicion: pageSuspicion,
@@ -57,6 +99,29 @@
 
         resumeObserver();
         isScanning = false;
+    }
+
+    // ─── Visual Profile / Themes ───────────────────────────────────────────
+
+    function applyTheme(themeName) {
+        let link = document.getElementById('ass-theme-link');
+
+        if (!themeName || themeName === 'default') {
+            if (link) link.remove();
+            return;
+        }
+
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'ass-theme-link';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+
+        const newHref = chrome.runtime.getURL(`themes/${themeName}.css`);
+        if (link.href !== newHref) {
+            link.href = newHref;
+        }
     }
 
     // ─── Text Node Collection ─────────────────────────────────────────────
@@ -72,7 +137,7 @@
                     const el = node.parentElement;
                     if (!el) return NodeFilter.FILTER_REJECT;
                     // Skip our own injected elements
-                    if (el.closest('.ass-tooltip, .ass-marker, .ass-hl'))
+                    if (el.closest('.ass-tooltip, .ass-marker, .ass-hl, #ass-hitchhiker-notice'))
                         return NodeFilter.FILTER_REJECT;
                     // Skip elements hidden by CSS (responsive clones, etc.)
                     if (el.getClientRects().length === 0)
@@ -110,7 +175,7 @@
                 const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
                 let n;
                 while ((n = w.nextNode())) out.push(n);
-            } catch (e) { console.debug('ASS cross-origin skip:', e); }
+            } catch (e) { /* ignore cross-origin errors */ }
         }
     }
 
@@ -126,7 +191,6 @@
         const excludeSet = new Set(charFilters.filter(f => f.type === 'exclude').map(f => f.id));
         const isAllowListMode = includeSet.size > 0;
 
-        // Helper to check if a char should be skipped based on filters
         function shouldSkip(name, codeStr) {
             if (isAllowListMode) {
                 return !includeSet.has(name) && !includeSet.has(codeStr);
@@ -426,7 +490,7 @@
 
                     highlightSpans.push(span);
                 } catch (e) {
-                    console.warn('ASS: highlight failed:', e);
+                    /* ignore highlight errors */
                 }
             }
         }
@@ -452,29 +516,86 @@
 
     // ─── Tooltip System ────────────────────────────────────────────────────
 
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', e => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    }, true);
+
     function ensureTooltip() {
         if (tooltipEl) return;
 
         tooltipEl = document.createElement('div');
         tooltipEl.className = 'ass-tooltip';
         tooltipEl.style.display = 'none';
+        tooltipEl.style.pointerEvents = 'auto'; // Allow interaction
         document.body.appendChild(tooltipEl);
 
         let showTimer, hideTimer;
+        let isAltHeld = false;
 
-        // Hover → show tooltip
-        document.addEventListener('mouseenter', e => {
-            const hl = e.target.closest?.('.ass-hl');
-            if (!hl) return;
-            clearTimeout(hideTimer);
-            showTimer = setTimeout(() => showTooltip(hl), 200);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Alt') {
+                isAltHeld = true;
+                clearTimeout(hideTimer);
+            }
         }, true);
 
-        document.addEventListener('mouseleave', e => {
+        document.addEventListener('keyup', e => {
+            if (e.key === 'Alt') {
+                isAltHeld = false;
+                if (tooltipEl.style.display !== 'none' && !tooltipEl.matches(':hover') && !document.querySelector('.ass-hl:hover')) {
+                    hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
+                }
+            }
+        }, true);
+
+        // Hover → show tooltip
+        document.addEventListener('mouseover', e => {
             const hl = e.target.closest?.('.ass-hl');
+            const tooltip = e.target.closest?.('.ass-tooltip');
+
+            if (tooltip) {
+                clearTimeout(hideTimer);
+                return;
+            }
+
+            if (!hl) return;
+            // Delay appearance
+            clearTimeout(showTimer);
+            showTimer = setTimeout(() => {
+                clearTimeout(hideTimer); // Prevent any trailing hide commands if we are committing to show
+                showTooltip(hl);
+            }, TOOLTIP_DELAY_MS);
+        }, true);
+
+        document.addEventListener('mouseout', e => {
+            const hl = e.target.closest?.('.ass-hl');
+            const tooltip = e.target.closest?.('.ass-tooltip');
+
+            if (tooltip) {
+                if (!isAltHeld) {
+                    clearTimeout(hideTimer);
+                    hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
+                }
+                return;
+            }
+
             if (!hl) return;
             clearTimeout(showTimer);
-            hideTimer = setTimeout(hideTooltip, 100);
+
+            // Wait before hiding, giving the user time to move the mouse into the tooltip
+            if (!isAltHeld) {
+                clearTimeout(hideTimer);
+                hideTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY_MS);
+            }
+        }, true);
+
+        document.addEventListener('mousedown', e => {
+            // Close tooltip if clicking outside
+            if (tooltipEl.style.display !== 'none' && !e.target.closest('.ass-tooltip') && !e.target.closest('.ass-hl')) {
+                hideTooltip();
+            }
         }, true);
 
         // Click → toggle inline expansion (swap marker text)
@@ -516,7 +637,7 @@
     function showTooltip(hlEl) {
         if (!tooltipEl) return;
         let data;
-        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch (e) { console.warn('tooltip JSON parse', e); return; }
+        try { data = JSON.parse(hlEl.dataset.tooltipData); } catch (e) { return; }
 
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
 
@@ -536,18 +657,26 @@
 
         html += `
             <div class="ass-tooltip-divider"></div>
-            <div class="ass-tooltip-hint">Click to expand inline &bull; Ctrl+Click to copy</div>`;
+            <div class="ass-tooltip-hint">Click inline &bull; Ctrl+Click copy &bull; Hold Alt for cursor selection</div>`;
 
         tooltipEl.innerHTML = html;
         tooltipEl.style.display = 'block';
 
-        // Position above element, flip below if clipped
-        const rect = hlEl.getBoundingClientRect();
+        // Position near cursor instead of element bounds
         const tr = tooltipEl.getBoundingClientRect();
-        let top = rect.top - tr.height - 8 + scrollY;
-        let left = rect.left + rect.width / 2 - tr.width / 2 + scrollX;
-        if (top < scrollY) top = rect.bottom + 8 + scrollY;
-        left = Math.max(4, Math.min(left, innerWidth - tr.width - 4));
+        let top = mouseY + TOOLTIP_CURSOR_GAP + scrollY;
+        let left = mouseX + TOOLTIP_CURSOR_GAP + scrollX;
+
+        // Prevent going off bottom
+        if (top - scrollY + tr.height > innerHeight) {
+            top = Math.max(scrollY + 4, mouseY - tr.height - TOOLTIP_CURSOR_GAP + scrollY);
+        }
+
+        // Prevent going off right
+        if (left - scrollX + tr.width > innerWidth) {
+            left = Math.max(scrollX + 4, mouseX - tr.width - TOOLTIP_CURSOR_GAP + scrollX);
+        }
+
         tooltipEl.style.top = `${top}px`;
         tooltipEl.style.left = `${left}px`;
     }
@@ -593,7 +722,7 @@
                 const before = (span.previousSibling?.textContent || '').slice(-20);
                 const after = (span.nextSibling?.textContent || '').slice(0, 20);
                 context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-            } catch (e) { console.debug('ASS context error:', e); }
+            } catch (e) { /* ignore context errors */ }
 
             detections.push({
                 nodeId: d.nodeId,
@@ -646,7 +775,7 @@
                     const before = txt.slice(Math.max(0, startIdx - 20), startIdx);
                     const after = txt.slice(startIdx + group.length, startIdx + group.length + 20);
                     context = `…${before}⦗███⦘${after}…`.replace(/[\n\r\t]/g, ' ');
-                } catch (e) { console.debug('ASS context error:', e); }
+                } catch (e) { /* ignore context errors */ }
 
                 detections.push({
                     nodeId,
