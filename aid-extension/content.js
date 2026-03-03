@@ -142,9 +142,7 @@
                     // Skip our own injected elements
                     if (el.closest('.ass-tooltip, .ass-marker, .ass-hl, #ass-hitchhiker-notice'))
                         return NodeFilter.FILTER_REJECT;
-                    // Skip elements hidden by CSS (responsive clones, etc.)
-                    if (el.getClientRects().length === 0)
-                        return NodeFilter.FILTER_REJECT;
+                    // Removed getClientRects check to prevent layout thrashing
                     return NodeFilter.FILTER_ACCEPT;
                 },
             }
@@ -433,6 +431,18 @@
             for (const group of groups) {
                 const startIdx = group[0].charIndex;
                 const endIdx = group.at(-1).charIndex + group.at(-1).charLen;
+
+                // Skip DOM mutation for single benign invisible characters (like VS16, ZWJ, Bidi marks)
+                // that React/other frameworks might be managing closely.
+                // We still report them to the side panel.
+                if (group.length === 1) {
+                    const cp = group[0].char.codePointAt(0);
+                    // VS1-16 (e.g. Emoji VS16 = U+FE0F), ZWJ (U+200D), ZWNJ (U+200C), LRM (U+200E), RLM (U+200F)
+                    if ((cp >= 0xFE00 && cp <= 0xFE0F) || cp === 0x200D || cp === 0x200C || cp === 0x200E || cp === 0x200F) {
+                        continue;
+                    }
+                }
+
                 const decoded = decodeGroup(group);
                 const decodedText = decoded || (group.length === 1 ? (group[0].detail || group[0].name) : `${group.length} invisible chars`);
 
@@ -511,7 +521,6 @@
             const parent = span.parentNode;
             while (span.firstChild) parent.insertBefore(span.firstChild, span);
             parent.removeChild(span);
-            parent.normalize();
         }
         highlightSpans = [];
         isHighlighting = false;
@@ -744,14 +753,11 @@
         return detections;
     }
 
-    function getEditableDetections(highlightedNodeIds) {
+    function getUnwrappedDetections(highlightedNodeIds) {
         const detections = [];
         for (let nodeIdx = 0; nodeIdx < allResults.length; nodeIdx++) {
             const { textNode, findings } = allResults[nodeIdx];
             if (!textNode.parentElement) continue;
-            const p = textNode.parentElement;
-            if (!(p.isContentEditable || p.closest('[contenteditable="true"], textarea, input, [role="textbox"], .cm-content, .CodeMirror, .monaco-editor')))
-                continue;
 
             const groups = groupConsecutive(findings).filter(g => {
                 const minLen = settings.minSeqLength ?? 1;
@@ -762,7 +768,7 @@
             });
             for (const group of groups) {
                 const startIdx = group[0].charIndex;
-                const nodeId = `ass - ${nodeIdx} -${startIdx} `;
+                const nodeId = `ass-${nodeIdx}-${startIdx}`;
                 if (highlightedNodeIds.has(nodeId)) continue;
 
                 const decoded = decodeGroup(group);
@@ -786,7 +792,7 @@
                     severity,
                     type: classifyCategory(group[0]),
                     charName: group.length === 1 ? group[0].name : `${group[0].name} (+${group.length - 1} more)`,
-                    codePoints: [`U + ${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')} `],
+                    codePoints: [`U+${group[0].char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`],
                     detail: group.length === 1
                         ? (group[0].detail || '')
                         : '',
@@ -803,8 +809,8 @@
     function buildSerializableResults() {
         let detections = getHighlightDetections();
         const highlightedNodeIds = new Set(detections.map(d => d.nodeId));
-        const editableDetections = getEditableDetections(highlightedNodeIds);
-        detections = detections.concat(editableDetections);
+        const unwrappedDetections = getUnwrappedDetections(highlightedNodeIds);
+        detections = detections.concat(unwrappedDetections);
 
         // Sort detections into exact document order to avoid reversed grouping
         detections.sort((a, b) => {
