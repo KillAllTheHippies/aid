@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterDropdown = document.getElementById('filter-dropdown');
     const optFuzzySearch = document.getElementById('opt-fuzzy-search');
     const filterChips = document.getElementById('filter-chips');
+    const optTheme = document.getElementById('opt-theme');
+    const optAutoHitchhiker = document.getElementById('opt-auto-hitchhiker');
+    const optAhThreshold = document.getElementById('opt-ah-threshold');
     const optHlStyle = document.getElementById('opt-hl-style');
     const optNbsp = document.getElementById('opt-nbsp');
     const optConfusable = document.getElementById('opt-confusable');
@@ -38,9 +41,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const { settings } = await chrome.runtime.sendMessage({ action: 'getSettings' });
     optAutoScan.checked = settings.autoScan || false;
+    optAutoHitchhiker.checked = settings.autoHitchhiker || false;
+    if (optAhThreshold) optAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
     let charFilters = settings.charFilters || [];
     optFuzzySearch.checked = settings.fuzzySearch ?? true;
+    optTheme.value = settings.visualProfile || 'default';
     optHlStyle.value = settings.highlightStyle || 'nimbus';
+
+    // applyTheme is now provided globally by shared-ui.js
+
+    applyTheme(optTheme.value);
     optNbsp.checked = settings.detectNbsp || false;
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
@@ -55,6 +65,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             autoScan: optAutoScan.checked,
             charFilters: charFilters,
             fuzzySearch: optFuzzySearch.checked,
+            visualProfile: optTheme.value,
+            autoHitchhiker: optAutoHitchhiker.checked,
+            autoHitchhikerThreshold: optAhThreshold ? Math.max(1, parseInt(optAhThreshold.value, 10) || 8) : 8,
             highlightStyle: optHlStyle.value,
             detectNbsp: optNbsp.checked,
             detectConfusableSpaces: optConfusable.checked,
@@ -67,10 +80,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (s.autoScan && !settings.autoScan) {
             chrome.permissions.request({ origins: ['<all_urls>'] }, granted => {
                 if (!granted) { optAutoScan.checked = false; s.autoScan = false; }
+                applyTheme(s.visualProfile);
                 chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
                 triggerRescan();
             });
         } else {
+            applyTheme(s.visualProfile);
             chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
             triggerRescan();
         }
@@ -93,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
 
     // ─── Filter Chips & Autocomplete ────────────────────────────────
@@ -178,7 +193,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!results.suspicion || !results.detections?.length) {
             setClean();
+            if (filterUI) filterUI.setDetectedCodepoints(new Set());
             return;
+        }
+
+        if (filterUI) {
+            const codepoints = extractDetectedCodepoints(results.detections);
+            filterUI.setDetectedCodepoints(codepoints);
         }
 
         const s = results.suspicion;
@@ -231,12 +252,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         alertEl.classList.toggle('hidden', !isNonDefault);
     }
 
-    // ─── Open Panel ─────────────────────────────────────────────────
+    // ─── Toggle Panel ───────────────────────────────────────────────
 
     panelBtn.addEventListener('click', async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (chrome.sidePanel) {
-            chrome.sidePanel.open({ tabId: tab.id });
+            chrome.runtime.sendMessage({ action: 'pingPanel' }, (response) => {
+                // Ignore the error if the port is closed
+                const _ = chrome.runtime.lastError;
+                if (response && response.open) {
+                    chrome.runtime.sendMessage({ action: 'closePanel' });
+                } else {
+                    chrome.runtime.sendMessage({ action: 'openPanel', tabId: tab.id });
+                }
+            });
         } else {
             window.close(); // Firefox: sidebar is accessible via sidebar_action
         }

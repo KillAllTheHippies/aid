@@ -79,14 +79,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Refresh from cache when a new scan completes
-    chrome.runtime.onMessage.addListener(message => {
-        if (message.action === 'scanResults') setTimeout(loadResults, 100);
+    // Message handler for results, pinging, and closing
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'scanResults') {
+            setTimeout(() => { loadResults(); }, 100);
+        } else if (message.action === 'pingPanel') {
+            sendResponse({ open: true });
+        } else if (message.action === 'closePanel') {
+            window.close();
+        }
     });
+
+    // applyTheme is now provided globally by shared-ui.js
 
     // ─── Rendering ───────────────────────────────────────────────────
 
-    function renderResults(r) {
+    async function renderResults(r) {
         if (!r?.suspicion) {
             emptyState.style.display = 'block';
             resultsContainer.style.display = 'none';
@@ -100,8 +108,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer.style.display = 'block';
         pageUrl.textContent = r.url || '';
 
-        // Summary
-        const s = r.suspicion;
+        renderSummary(r.suspicion);
+        renderCategoryBreakdown(r.categoryBreakdown);
+
+        if (r.settings) {
+            await loadFilterSettings();
+            applyTheme(r.settings.visualProfile);
+        }
+
+        if (typeof filterUI !== 'undefined') {
+            const codepoints = extractDetectedCodepoints(r.detections);
+            filterUI.setDetectedCodepoints(codepoints);
+        }
+
+        const rendered = renderDetections(r.detections) || { sneakyDecodedStrings: [] };
+        const sneakyDecodedStrings = rendered.sneakyDecodedStrings || [];
+        updateSettingsAlert();
+
+        renderTagRuns(r.tagRunSummary, sneakyDecodedStrings);
+    }
+
+    function renderSummary(s) {
         const emoji = { info: '🔵', medium: '🟡', high: '🟠', critical: '🔴' };
         summaryGrid.innerHTML = `
             <div class="summary-item summary-item-full level-${s.suspicionLevel}">
@@ -128,42 +155,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="summary-item-label">Longest Tag Run</div>
                 <div class="summary-item-value">${s.maxConsecutiveUnicodeTags}</div>
             </div>`;
+    }
 
-        // Category breakdown
-        if (r.categoryBreakdown) {
-            const entries = Object.entries(r.categoryBreakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-            if (entries.length) {
-                categorySection.style.display = 'block';
-                categoryGrid.innerHTML = entries.map(([name, count]) =>
-                    `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
-                ).join('');
-            } else {
-                categorySection.style.display = 'none';
-            }
+    function renderCategoryBreakdown(breakdown) {
+        if (!breakdown) {
+            categorySection.style.display = 'none';
+            return;
+        }
+        const entries = Object.entries(breakdown).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+        if (entries.length) {
+            categorySection.style.display = 'block';
+            categoryGrid.innerHTML = entries.map(([name, count]) =>
+                `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
+            ).join('');
+        } else {
+            categorySection.style.display = 'none';
+        }
+    }
+
+    function renderTagRuns(tagSummary, decodedStrings) {
+        const combinedSummary = [];
+        if (tagSummary) combinedSummary.push(tagSummary);
+        if (decodedStrings.length) {
+            combinedSummary.push(...decodedStrings.map(s => `'${s}'`));
         }
 
-        // Sync drawer controls with scan results settings
-        if (r.settings) loadFilterSettings();
-
-        // Detections
-        renderDetections(r.detections);
-        updateSettingsAlert();
-
-        // Tag runs
-        if (r.tagRunSummary) {
+        if (combinedSummary.length > 0) {
             tagRunsSection.style.display = 'block';
-            tagRuns.textContent = r.tagRunSummary;
+            tagRuns.innerText = combinedSummary.join('\n\n');
         } else {
             tagRunsSection.style.display = 'none';
         }
     }
 
-    // Helper to format binary string into 8-bit blocks
     function formatBinary(binaryStr) {
         return (binaryStr.match(/.{1,8}/g) || []).join(' ');
     }
 
-    // Helper to convert binary string to Hex
     function toHex(binStr) {
         if (!binStr) return '';
         const bytes = binStr.match(/.{1,8}/g) || [];
@@ -173,8 +201,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join(' ');
     }
 
-    // Helper to decode binary string (8-bit ASCII/UTF-8)
-    // Returns full decoding, and optionally a "trimmed" version if it yields better results
     function decodeBinary(binStr) {
         if (!binStr || binStr.length < 8) return { full: '', printable: false };
 
@@ -239,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { sneakyMap, filteredDetections };
     }
 
-    function buildSneakyBitsHtml(sneakyMap) {
+    function buildSneakyBitsHtml(sneakyMap, decodedStringsArr) {
         let html = '';
         const dName0 = sbChar0Select?.options[sbChar0Select.selectedIndex]?.text.split(' (')[0] || 'Char 0';
         const dName1 = sbChar1Select?.options[sbChar1Select.selectedIndex]?.text.split(' (')[0] || 'Char 1';
@@ -253,6 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const renderConfig = (label, bin, hex, dec, isA) => {
                 const showDecoded = dec.isFullPrintable || dec.isTrimmedPrintable;
                 const activeDec = dec.isTrimmedPrintable && !dec.isFullPrintable ? dec.trimmed : dec.full;
+                if (showDecoded && decodedStringsArr) decodedStringsArr.push(activeDec);
                 const isTrimmedUsed = dec.isTrimmedPrintable && !dec.isFullPrintable;
                 return `
                 <div class="sb-payload-block" style="${isA ? 'margin-bottom: 12px;' : ''}">
@@ -325,7 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderDetections(detections) {
         if (!detections?.length) {
             detectionsList.innerHTML = '<div style="color:#666;padding:8px;">No detections.</div>';
-            return;
+            return { sneakyDecodedStrings: [] };
         }
 
         populateSbDropdowns(detections);
@@ -333,7 +360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const { sneakyMap, filteredDetections } = processSneakyBits(detections, char0, char1);
 
-        let html = buildSneakyBitsHtml(sneakyMap);
+        const sneakyDecodedStrings = [];
+        let html = buildSneakyBitsHtml(sneakyMap, sneakyDecodedStrings);
         html += buildStandardHtml(filteredDetections);
 
         detectionsList.innerHTML = html;
@@ -364,6 +392,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 chrome.tabs.sendMessage(tab.id, { action: 'scrollToDetection', nodeIds });
             });
         });
+
+        return { sneakyDecodedStrings };
     }
 
     // ─── Filter Drawer Controls ──────────────────────────────────────
@@ -372,6 +402,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelFilterDropdown = document.getElementById('panel-filter-dropdown');
     const panelFilterChips = document.getElementById('panel-filter-chips');
     const panelOptFuzzySearch = document.getElementById('panel-opt-fuzzy-search');
+    const panelVisualProfile = document.getElementById('panel-opt-theme');
+    const panelAutoHitchhiker = document.getElementById('panel-opt-auto-hitchhiker');
+    const panelAhThreshold = document.getElementById('panel-opt-ah-threshold');
+    const panelHighlightStyle = document.getElementById('panel-highlight-style');
     const panelOptNbsp = document.getElementById('panel-opt-nbsp');
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
@@ -492,13 +526,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Search filter category toggles
-    // Sync checkbox toggles visibility with the details toggle
-    const filterToggle = document.getElementById('filter-toggle');
-    const filterTogglesDiv = document.getElementById('panel-filter-toggles');
-    filterToggle.addEventListener('toggle', () => {
-        filterTogglesDiv.classList.toggle('collapsed', !filterToggle.open);
-    });
+    // Search filter category toggles removed (handled by details panel directly)
+
 
     // ─── Detection Cards ─────────────────────────────────────────────
 
@@ -534,11 +563,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             autoScan: false, // Don't change autoScan from panel
             charFilters: charFilters,
             fuzzySearch: panelOptFuzzySearch.checked,
+            visualProfile: panelVisualProfile ? panelVisualProfile.value : 'default',
+            autoHitchhiker: panelAutoHitchhiker ? panelAutoHitchhiker.checked : false,
+            autoHitchhikerThreshold: panelAhThreshold ? Math.max(1, parseInt(panelAhThreshold.value, 10) || 8) : 8,
             detectNbsp: panelOptNbsp.checked,
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
-            highlightStyle: currentHighlightStyle,
+            highlightStyle: panelHighlightStyle ? panelHighlightStyle.value : 'nimbus',
             sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
@@ -561,6 +593,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Checkbox & number input handlers
     [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
+    if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
+        saveFilterSettings();
+        applyTheme(panelVisualProfile.value);
+    });
+    if (panelAutoHitchhiker) panelAutoHitchhiker.addEventListener('change', saveFilterSettings);
+    if (panelAhThreshold) panelAhThreshold.addEventListener('input', saveFilterSettings);
+    if (panelHighlightStyle) panelHighlightStyle.addEventListener('change', saveFilterSettings);
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));
 
@@ -571,10 +610,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         charFilters = settings.charFilters || [];
         panelOptNbsp.checked = settings.detectNbsp || false;
         panelOptFuzzySearch.checked = settings.fuzzySearch ?? true;
-        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
-        panelOptCc.checked = settings.detectControlChars || false;
-        panelOptZs.checked = settings.detectSpaceSeparators || false;
+        if (panelVisualProfile) panelVisualProfile.value = settings.visualProfile || 'default';
+        if (panelAutoHitchhiker) panelAutoHitchhiker.checked = settings.autoHitchhiker || false;
+        if (panelAhThreshold) panelAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
+        if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
+        panelOptConfusable.checked = settings.detectConfusableSpaces || false;
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {
@@ -588,6 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;
         if (typeof filterUI !== 'undefined') filterUI.updateFilters(charFilters);
+        applyTheme(settings.visualProfile);
         updateSeqPreview();
     }
 

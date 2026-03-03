@@ -22,6 +22,8 @@ $extensionFiles = @(
     'panel.html',
     'panel.js',
     'panel.css',
+    'shared.css',
+    'shared-ui.js',
     'styles.css',
     'icons/icon16.png',
     'icons/icon32.png',
@@ -44,6 +46,13 @@ function Build-Chrome {
         }
     }
 
+    # Copy themes directory
+    $themesSrc = Join-Path $scriptDir 'themes'
+    if (Test-Path $themesSrc) {
+        $themesDest = Join-Path $outDir 'themes'
+        Copy-Item $themesSrc $themesDest -Recurse -Force | Out-Null
+    }
+
     # Create zip
     $zipPath = Join-Path $distDir 'ass-chrome.zip'
     if (Test-Path $zipPath) { Remove-Item $zipPath }
@@ -64,6 +73,13 @@ function Build-Firefox {
         if (Test-Path $src) {
             Copy-Item $src $dest
         }
+    }
+
+    # Copy themes directory
+    $themesSrc = Join-Path $scriptDir 'themes'
+    if (Test-Path $themesSrc) {
+        $themesDest = Join-Path $outDir 'themes'
+        Copy-Item $themesSrc $themesDest -Recurse -Force | Out-Null
     }
 
     # Merge Firefox manifest overrides
@@ -105,6 +121,13 @@ function Build-Edge {
         if (Test-Path $src) {
             Copy-Item $src $dest
         }
+    }
+
+    # Copy themes directory
+    $themesSrc = Join-Path $scriptDir 'themes'
+    if (Test-Path $themesSrc) {
+        $themesDest = Join-Path $outDir 'themes'
+        Copy-Item $themesSrc $themesDest -Recurse -Force | Out-Null
     }
 
     # Create zip
