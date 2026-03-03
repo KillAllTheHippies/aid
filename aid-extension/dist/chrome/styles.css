@@ -1,0 +1,169 @@
+/* ─── ASS – ASCII Smuggling Surfacer · Injected Page Styles ─────────────── */
+
+/* ─── Highlight Wrappers ─────────────────────────────────────────────────── */
+
+.ass-hl {
+  position: relative;
+  display: inline;
+  border-radius: 2px;
+  cursor: help;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+/* Severity colors */
+/* Classic style (original) */
+.ass-hl[data-style="classic"][data-severity="info"] {
+  background: rgba(33, 150, 243, 0.12);
+  box-shadow: 0 0 6px 1px rgba(33, 150, 243, 0.5);
+}
+
+.ass-hl[data-style="classic"][data-severity="medium"] {
+  background: rgba(255, 193, 7, 0.15);
+  box-shadow: 0 0 6px 1px rgba(255, 193, 7, 0.6);
+}
+
+.ass-hl[data-style="classic"][data-severity="high"] {
+  background: rgba(255, 152, 0, 0.15);
+  box-shadow: 0 0 8px 2px rgba(255, 152, 0, 0.6);
+}
+
+.ass-hl[data-style="classic"][data-severity="critical"] {
+  background: rgba(244, 67, 54, 0.18);
+  box-shadow: 0 0 10px 3px rgba(244, 67, 54, 0.7);
+}
+
+/* Nimbus style (new default) - inobtrusive halo */
+.ass-hl[data-style="nimbus"] {
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 0 4px currentColor;
+  border-bottom: 1px dashed currentColor;
+}
+
+.ass-hl[data-style="nimbus"][data-severity="info"] {
+  color: #2196f3;
+}
+
+.ass-hl[data-style="nimbus"][data-severity="medium"] {
+  color: #ffc107;
+}
+
+.ass-hl[data-style="nimbus"][data-severity="high"] {
+  color: #ff9800;
+}
+
+.ass-hl[data-style="nimbus"][data-severity="critical"] {
+  color: #f44336;
+}
+
+/* Legacy support (fallback) */
+.ass-hl:not([data-style]) {
+  background: rgba(255, 193, 7, 0.1);
+  box-shadow: 0 0 4px rgba(255, 193, 7, 0.4);
+}
+
+/* Hover glow */
+.ass-hl:hover {
+  box-shadow: 0 0 14px 5px currentColor;
+  filter: brightness(1.2);
+}
+
+/* Group marker — subtle, hoverable indicator */
+.ass-marker {
+  font-size: 9px;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  opacity: 0.7;
+  vertical-align: middle;
+  cursor: help;
+  user-select: none;
+  color: inherit;
+}
+
+.ass-hl:hover .ass-marker {
+  opacity: 1;
+}
+
+/* Expanded marker shows decoded message */
+.ass-hl.expanded .ass-marker {
+  color: #00ff88;
+  opacity: 1;
+  font-size: 11px;
+}
+
+/* Pulse animation for jump-to */
+@keyframes ass-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px currentColor;
+  }
+
+  50% {
+    box-shadow: 0 0 24px 8px currentColor;
+    filter: brightness(1.5);
+  }
+}
+
+.ass-hl.pulse {
+  animation: ass-pulse 0.6s ease-in-out 3;
+}
+
+/* ─── Tooltip ────────────────────────────────────────────────────────────── */
+
+.ass-tooltip {
+  position: absolute;
+  z-index: 2147483647;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 220px;
+  max-width: 380px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ass-tooltip-header {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.ass-tooltip-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 6px 0;
+}
+
+.ass-tooltip-row {
+  margin: 3px 0;
+}
+
+.ass-tooltip-row b {
+  color: #a0a0c0;
+}
+
+.ass-tooltip-row code {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 11px;
+}
+
+.ass-tooltip-decoded {
+  word-break: break-all;
+}
+
+.ass-tooltip-hint {
+  font-size: 10px;
+  color: #888;
+  font-style: italic;
+}
