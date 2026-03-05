@@ -132,6 +132,10 @@
   color: #00ff88;
   opacity: 1;
   font-size: 11px;
+  height: auto !important;
+  line-height: normal !important;
+  word-break: break-all;
+  white-space: normal;
 }
 
 /* Pulse animation for jump-to */

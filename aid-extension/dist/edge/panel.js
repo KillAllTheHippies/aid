@@ -82,6 +82,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Message handler for results, pinging, and closing
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'scanResults') {
+            // Reset user override on fresh scan so auto-suggest can run
+            sbUserOverride = false;
             setTimeout(() => { loadResults(); }, 100);
         } else if (message.action === 'pingPanel') {
             sendResponse({ open: true });
@@ -410,6 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
     const panelOptZs = document.getElementById('panel-opt-zs');
+    const panelOptExpandToNames = document.getElementById('panel-opt-expand-to-names');
     const panelOptMinSeq = document.getElementById('panel-opt-min-seq');
     const panelOptMaxSeq = document.getElementById('panel-opt-max-seq');
     const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
@@ -418,47 +421,86 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sbChar0Select = document.getElementById('sb-char-0-select');
     const sbChar1Select = document.getElementById('sb-char-1-select');
     const sbAutoHint = document.getElementById('sb-auto-suggest-hint');
+    const sbAutoThreshold = document.getElementById('sb-auto-threshold');
 
     let charFilters = [];
     let sbConfig = { char0: '', char1: '' };
+    let sbUserOverride = false;
     let currentHighlightStyle = 'nimbus';
+
+    /** Resolve the full verbose name for a single character, matching the detection filter's format. */
+    function resolveCharName(char) {
+        const cp = char.codePointAt(0);
+        const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+
+        // 1. Primary invisible chars dict
+        if (typeof INVISIBLE_CHARS !== 'undefined' && INVISIBLE_CHARS[char]) {
+            return `${codeStr}  ${INVISIBLE_CHARS[char]}`;
+        }
+        // 2. Confusable spaces
+        if (typeof CONFUSABLE_SPACE_CHARS !== 'undefined' && CONFUSABLE_SPACE_CHARS[char]) {
+            return `${codeStr}  ${CONFUSABLE_SPACE_CHARS[char]}`;
+        }
+        // 3. Unicode Tags
+        if (typeof isUnicodeTag === 'function' && isUnicodeTag(cp)) {
+            const decoded = decodeUnicodeTag(cp);
+            return `${codeStr}  UNICODE TAG (ASCII: ${decoded})`;
+        }
+        // 4. Variation Selector Supplements (VS17-256)
+        if (typeof isVariationSelectorSupplement === 'function' && isVariationSelectorSupplement(cp)) {
+            const name = variationSelectorName(cp);
+            const lowByte = cp - VS_SUPPLEMENT_START;
+            const asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
+            return `${codeStr}  ${name} (ASCII: ${asciiStr})`;
+        }
+        // 5. Control characters
+        if (typeof isControlChar === 'function' && isControlChar(char)) {
+            return `${codeStr}  ${controlCharName(char)}`;
+        }
+        // 6. Space separators
+        if (typeof isSpaceSeparator === 'function' && isSpaceSeparator(char)) {
+            return `${codeStr}  ${zsCharName(char)}`;
+        }
+        // 7. Soft hyphen
+        if (cp === 0x00AD) {
+            return `${codeStr}  SOFT HYPHEN`;
+        }
+        // Fallback
+        return codeStr;
+    }
 
     function populateSbDropdowns(detections) {
         if (!sbChar0Select || !sbChar1Select || !detections) return;
 
         // Count frequencies of single characters
         const charCounts = {};
-        const charNames = {};
         let totalHiddenChars = 0;
 
         for (const d of detections) {
             const raw = d.rawChars || '';
             for (const char of raw) {
                 charCounts[char] = (charCounts[char] || 0) + 1;
-                // Try to get a clean name for the single character
-                if (!charNames[char]) {
-                    charNames[char] = d.groupSize === 1 ? d.charName : (d.charName.includes(' ') ? d.charName.split(' ')[0] : d.charName);
-                }
                 totalHiddenChars++;
             }
         }
 
         const sortedChars = Object.keys(charCounts).sort((a, b) => charCounts[b] - charCounts[a]);
 
-        // Auto-suggest logic if not explicitly saved by user
+        // Auto-suggest logic
         let auto0 = '';
         let auto1 = '';
+        const threshold = sbAutoThreshold ? (parseInt(sbAutoThreshold.value, 10) || 50) / 100 : 0.50;
         if (sortedChars.length >= 2 && totalHiddenChars > 12) {
             const top2Count = charCounts[sortedChars[0]] + charCounts[sortedChars[1]];
-            if (top2Count / totalHiddenChars > 0.70) {
+            if (top2Count / totalHiddenChars > threshold) {
                 auto0 = sortedChars[0];
                 auto1 = sortedChars[1];
             }
         }
 
-        // Apply auto-suggest if user hasn't explicitly set anything
+        // Apply auto-suggest unless user has manually overridden
         let isAutoSuggested = false;
-        if (!sbConfig.char0 && !sbConfig.char1 && auto0 && auto1) {
+        if (!sbUserOverride && auto0 && auto1) {
             sbConfig.char0 = auto0;
             sbConfig.char1 = auto1;
             isAutoSuggested = true;
@@ -472,13 +514,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '<option value="">(None)</option>';
             for (const char of sortedChars) {
                 const count = charCounts[char];
-                // basic fallback name if undefined
-                const name = charNames[char] || 'U+' + char.charCodeAt(0).toString(16).toUpperCase();
+                const displayName = resolveCharName(char);
                 const selected = char === selectedVal ? 'selected' : '';
-
-                // Show a readable option name
-                const displayChar = char === '\uFE0E' ? 'VS-15' : char === '\uFE0F' ? 'VS-16' : name;
-                html += `<option value="${char}" ${selected}>${displayChar} (${count})</option>`;
+                html += `<option value="${char}" ${selected}>${displayName} (${count})</option>`;
             }
             return html;
         };
@@ -487,17 +525,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         sbChar1Select.innerHTML = buildOptions(sbConfig.char1);
     }
 
-    // Set up change handlers for the new dynamic payload decoder dropdowns
+    /** Re-render detections locally using current sbConfig (no page rescan needed) */
+    function reRenderDetections() {
+        if (!currentResults?.detections) return;
+        const rendered = renderDetections(currentResults.detections) || { sneakyDecodedStrings: [] };
+        renderTagRuns(currentResults.tagRunSummary, rendered.sneakyDecodedStrings || []);
+        // Save sbConfig to settings without triggering rescan
+        chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
+            const s = resp?.settings || {};
+            s.sbConfig = sbConfig;
+            s.sbAutoThreshold = sbAutoThreshold ? parseInt(sbAutoThreshold.value, 10) || 50 : 50;
+            chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+        });
+    }
+
+    // Set up change handlers for the dynamic payload decoder dropdowns
     if (sbChar0Select) {
         sbChar0Select.addEventListener('change', () => {
             sbConfig.char0 = sbChar0Select.value;
-            saveFilterSettings();
+            sbUserOverride = true;
+            reRenderDetections();
         });
     }
     if (sbChar1Select) {
         sbChar1Select.addEventListener('change', () => {
             sbConfig.char1 = sbChar1Select.value;
-            saveFilterSettings();
+            sbUserOverride = true;
+            reRenderDetections();
         });
     }
 
@@ -507,8 +561,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         sbConfig.char1 = temp;
         if (sbChar0Select) sbChar0Select.value = sbConfig.char0;
         if (sbChar1Select) sbChar1Select.value = sbConfig.char1;
-        saveFilterSettings();
+        sbUserOverride = true;
+        reRenderDetections();
     });
+
+    // Utility: debounce
+    function debounce(fn, ms) {
+        let timer;
+        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    }
+
+    if (sbAutoThreshold) {
+        sbAutoThreshold.addEventListener('input', debounce(() => {
+            // Reset override so re-detection can run with new threshold
+            sbUserOverride = false;
+            reRenderDetections();
+        }, 600));
+    }
 
     // ─── Filter UI Initialization ─────────────────────────────────────────────
 
@@ -551,6 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             panelOptConfusable.checked !== false ||
             panelOptCc.checked !== false ||
             panelOptZs.checked !== false ||
+            (panelOptExpandToNames && panelOptExpandToNames.checked !== false) ||
             (parseInt(panelOptMinSeq.value, 10) || 1) !== 1 ||
             (parseInt(panelOptMaxSeq.value, 10) || 0) !== 0;
 
@@ -570,8 +640,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
+            expandToNames: panelOptExpandToNames ? panelOptExpandToNames.checked : false,
             highlightStyle: panelHighlightStyle ? panelHighlightStyle.value : 'nimbus',
             sbConfig: sbConfig,
+            sbAutoThreshold: sbAutoThreshold ? parseInt(sbAutoThreshold.value, 10) || 50 : 50,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(panelOptMaxSeq.value, 10) || 0),
         };
@@ -591,14 +663,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox & number input handlers
-    function debounce(fn, ms) {
-        let timer;
-        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
-    }
     const saveFilterSettingsDebounced = debounce(saveFilterSettings, 600);
 
-    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
-        el.addEventListener('change', saveFilterSettings));
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptExpandToNames, panelOptFuzzySearch].forEach(el => {
+        if (el) el.addEventListener('change', saveFilterSettings)
+    });
     if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
         saveFilterSettings();
         applyTheme(panelVisualProfile.value);
@@ -623,15 +692,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;
+        if (panelOptExpandToNames) panelOptExpandToNames.checked = settings.expandToNames || false;
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {
-            sbConfig = settings.sbConfig;
+            sbConfig = { char0: settings.sbConfig.char0 || '', char1: settings.sbConfig.char1 || '' };
         } else if (settings.sneakyBitConfig && settings.sneakyBitConfig['\uFE0E']) {
             sbConfig = { char0: '\uFE0E', char1: '\uFE0F' };
         } else {
             sbConfig = { char0: '', char1: '' };
         }
+        if (sbAutoThreshold) sbAutoThreshold.value = settings.sbAutoThreshold ?? 50;
 
         panelOptMinSeq.value = settings.minSeqLength ?? 1;
         panelOptMaxSeq.value = settings.maxSeqLength ?? 0;

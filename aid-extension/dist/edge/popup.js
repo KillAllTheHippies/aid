@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optConfusable = document.getElementById('opt-confusable');
     const optCc = document.getElementById('opt-cc');
     const optZs = document.getElementById('opt-zs');
+    const optExpandToNames = document.getElementById('opt-expand-to-names');
     const optMinSeq = document.getElementById('opt-min-seq');
     const optMaxSeq = document.getElementById('opt-max-seq');
     const seqDrawer = document.getElementById('seq-length-drawer');
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     optConfusable.checked = settings.detectConfusableSpaces || false;
     optCc.checked = settings.detectControlChars || false;
     optZs.checked = settings.detectSpaceSeparators || false;
+    optExpandToNames.checked = settings.expandToNames || false;
     optMinSeq.value = settings.minSeqLength ?? 1;
     optMaxSeq.value = settings.maxSeqLength ?? 0;
 
@@ -73,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: optConfusable.checked,
             detectControlChars: optCc.checked,
             detectSpaceSeparators: optZs.checked,
+            expandToNames: optExpandToNames.checked,
             minSeqLength: Math.max(1, parseInt(optMinSeq.value, 10) || 1),
             maxSeqLength: Math.max(0, parseInt(optMaxSeq.value, 10) || 0),
         };
@@ -114,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optAutoHitchhiker, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optAutoHitchhiker, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optExpandToNames, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
     // Debounced: rapid spinner clicks won't flood rescans
     if (optAhThreshold) optAhThreshold.addEventListener('input', saveSettingsDebounced);

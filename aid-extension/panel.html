@@ -163,6 +163,10 @@
                                 <input type="checkbox" id="panel-opt-zs">
                                 <span>Detect space separators (Zs)</span>
                             </label>
+                            <label class="setting-row">
+                                <input type="checkbox" id="panel-opt-expand-to-names">
+                                <span>Show char names instead of codepoints</span>
+                            </label>
                         </div>
                     </div>
                 </details>
@@ -213,6 +217,16 @@
                             <select id="sb-char-1-select" class="setting-select" style="flex: 1; max-width: 100%;">
                                 <option value="">(None)</option>
                             </select>
+                        </div>
+                        <div class="setting-row" style="margin: 0; padding: 0; justify-content: space-between;">
+                            <button id="sb-flip-btn" class="header-link" style="font-size: 10px; padding: 2px 8px;">⇅
+                                Flip</button>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 10px; color: #888;">Auto-detect threshold:</span>
+                                <input type="number" id="sb-auto-threshold" min="10" max="100" value="50" step="5"
+                                    style="width: 48px; font-size: 11px;" class="setting-input">
+                                <span style="font-size: 10px; color: #888;">%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
