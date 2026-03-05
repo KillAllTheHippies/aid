@@ -410,6 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panelOptConfusable = document.getElementById('panel-opt-confusable');
     const panelOptCc = document.getElementById('panel-opt-cc');
     const panelOptZs = document.getElementById('panel-opt-zs');
+    const panelOptExpandToNames = document.getElementById('panel-opt-expand-to-names');
     const panelOptMinSeq = document.getElementById('panel-opt-min-seq');
     const panelOptMaxSeq = document.getElementById('panel-opt-max-seq');
     const panelSeqDrawer = document.getElementById('panel-seq-length-drawer');
@@ -551,6 +552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             panelOptConfusable.checked !== false ||
             panelOptCc.checked !== false ||
             panelOptZs.checked !== false ||
+            (panelOptExpandToNames && panelOptExpandToNames.checked !== false) ||
             (parseInt(panelOptMinSeq.value, 10) || 1) !== 1 ||
             (parseInt(panelOptMaxSeq.value, 10) || 0) !== 0;
 
@@ -570,6 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
             detectSpaceSeparators: panelOptZs.checked,
+            expandToNames: panelOptExpandToNames ? panelOptExpandToNames.checked : false,
             highlightStyle: panelHighlightStyle ? panelHighlightStyle.value : 'nimbus',
             sbConfig: sbConfig,
             minSeqLength: Math.max(1, parseInt(panelOptMinSeq.value, 10) || 1),
@@ -597,8 +600,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const saveFilterSettingsDebounced = debounce(saveFilterSettings, 600);
 
-    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
-        el.addEventListener('change', saveFilterSettings));
+    [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptExpandToNames, panelOptFuzzySearch].forEach(el => {
+        if (el) el.addEventListener('change', saveFilterSettings)
+    });
     if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
         saveFilterSettings();
         applyTheme(panelVisualProfile.value);
@@ -623,6 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;
+        if (panelOptExpandToNames) panelOptExpandToNames.checked = settings.expandToNames || false;
 
         // Load dynamic decoder settings or migrate old ones
         if (settings.sbConfig) {

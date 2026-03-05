@@ -428,7 +428,18 @@
                 const startIdx = group[0].charIndex;
                 const endIdx = group.at(-1).charIndex + group.at(-1).charLen;
                 const decoded = decodeGroup(group);
-                const decodedText = decoded || (group.length === 1 ? (group[0].detail || group[0].name) : `${group.length} invisible chars`);
+                let decodedText = decoded;
+                if (!decodedText) {
+                    if (group.length === 1) {
+                        decodedText = group[0].detail || group[0].name;
+                    } else {
+                        if (settings.expandToNames) {
+                            decodedText = group.map(c => c.name).join(', ');
+                        } else {
+                            decodedText = group.map(c => `U+${c.char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ');
+                        }
+                    }
+                }
 
                 // Group severity
                 let severity;
@@ -760,7 +771,18 @@
                 if (highlightedNodeIds.has(nodeId)) continue;
 
                 const decoded = decodeGroup(group);
-                const decodedText = decoded || (group.length === 1 ? (group[0].detail || group[0].name) : `${group.length} invisible chars`);
+                let decodedText = decoded;
+                if (!decodedText) {
+                    if (group.length === 1) {
+                        decodedText = group[0].detail || group[0].name;
+                    } else {
+                        if (settings.expandToNames) {
+                            decodedText = group.map(c => c.name).join(', ');
+                        } else {
+                            decodedText = group.map(c => `U+${c.char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ');
+                        }
+                    }
+                }
                 let severity;
                 if (group.length >= CRITICAL_CONSECUTIVE_RUN_THRESHOLD) severity = 'critical';
                 else if (group.length >= HIGH_CONSECUTIVE_RUN_THRESHOLD) severity = 'high';
