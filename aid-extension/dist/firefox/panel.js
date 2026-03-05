@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (r.settings) {
             await loadFilterSettings();
-            applyTheme(r.settings.visualProfile);
+            applyTheme(r.activeTheme || r.settings.visualProfile || 'default');
         }
 
         if (typeof filterUI !== 'undefined') {
@@ -591,6 +591,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox & number input handlers
+    function debounce(fn, ms) {
+        let timer;
+        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    }
+    const saveFilterSettingsDebounced = debounce(saveFilterSettings, 600);
+
     [panelOptNbsp, panelOptConfusable, panelOptCc, panelOptZs, panelOptFuzzySearch].forEach(el =>
         el.addEventListener('change', saveFilterSettings));
     if (panelVisualProfile) panelVisualProfile.addEventListener('change', () => {
@@ -598,7 +604,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyTheme(panelVisualProfile.value);
     });
     if (panelAutoHitchhiker) panelAutoHitchhiker.addEventListener('change', saveFilterSettings);
-    if (panelAhThreshold) panelAhThreshold.addEventListener('input', saveFilterSettings);
+    // Debounced: rapid spinner clicks won't flood rescans
+    if (panelAhThreshold) panelAhThreshold.addEventListener('input', saveFilterSettingsDebounced);
     if (panelHighlightStyle) panelHighlightStyle.addEventListener('change', saveFilterSettings);
     [panelOptMinSeq, panelOptMaxSeq].forEach(el =>
         el.addEventListener('input', saveFilterSettings));

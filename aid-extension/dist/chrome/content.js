@@ -48,16 +48,13 @@
         applyHighlights();
         ensureTooltip();
 
-        // Auto-Hitchhiker toggle logic
+        // The auto-calming threshold controls the Hitchhiker page takeover.
+        // The visual profile dropdown ONLY affects the popup/panel (via shared-ui.js).
+        // applyPageTheme() injects CSS into the host webpage ONLY for the auto-calming
+        // Hitchhiker effect — never for regular visual profile changes.
         const ahThreshold = settings.autoHitchhikerThreshold ?? 8;
-        let isHitchhikerActive = false;
-        if (settings.autoHitchhiker && pageSuspicion.totalCodePoints >= ahThreshold) {
-            applyTheme('hitchhiker');
-            isHitchhikerActive = true;
-        } else {
-            applyTheme(settings.visualProfile || 'default');
-        }
-
+        const isHitchhikerActive = settings.autoHitchhiker && pageSuspicion.totalCodePoints >= ahThreshold;
+        applyPageTheme(isHitchhikerActive ? 'hitchhiker' : null);
         window.__assActiveTheme = isHitchhikerActive ? 'hitchhiker' : (settings.visualProfile || 'default');
 
         // Add calming yet stressful message for hitchhiker theme
@@ -104,27 +101,25 @@
         isScanning = false;
     }
 
-    // ─── Visual Profile / Themes ───────────────────────────────────────────
+    // ─── Webpage Theme Injection ───────────────────────────────────────────
+    // applyPageTheme() injects a CSS stylesheet into the HOST WEBPAGE's <head>.
+    // This is used ONLY for the auto-calming Hitchhiker takeover effect.
+    // Regular visual profile changes go through shared-ui.js (popup/panel only).
 
-    function applyTheme(themeName) {
+    function applyPageTheme(themeName) {
         let link = document.getElementById('ass-theme-link');
-
-        if (!themeName || themeName === 'default') {
+        if (!themeName) {
             if (link) link.remove();
             return;
         }
-
         if (!link) {
             link = document.createElement('link');
             link.id = 'ass-theme-link';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
         }
-
         const newHref = chrome.runtime.getURL(`themes/${themeName}.css`);
-        if (link.href !== newHref) {
-            link.href = newHref;
-        }
+        if (link.href !== newHref) link.href = newHref;
     }
 
     // ─── Text Node Collection ─────────────────────────────────────────────

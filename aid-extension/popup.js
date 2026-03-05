@@ -98,6 +98,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tab) chrome.runtime.sendMessage({ action: 'triggerScan', tabId: tab.id });
     }
 
+    function debounce(fn, ms) {
+        let timer;
+        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    }
+    const saveSettingsDebounced = debounce(saveSettings, 600);
+
     function updateSeqPreview() {
         const min = parseInt(optMinSeq.value, 10) || 1;
         const max = parseInt(optMaxSeq.value, 10) || 0;
@@ -108,8 +114,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     seqDrawer.addEventListener('toggle', updateSeqPreview);
     updateSeqPreview();
 
-    [optAutoScan, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
+    [optAutoScan, optAutoHitchhiker, optTheme, optHlStyle, optNbsp, optConfusable, optCc, optZs, optFuzzySearch].forEach(el => el.addEventListener('change', saveSettings));
     [optMinSeq, optMaxSeq].forEach(el => el.addEventListener('input', saveSettings));
+    // Debounced: rapid spinner clicks won't flood rescans
+    if (optAhThreshold) optAhThreshold.addEventListener('input', saveSettingsDebounced);
 
     // ─── Filter Chips & Autocomplete ────────────────────────────────
 
