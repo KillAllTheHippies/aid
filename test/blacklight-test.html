@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Blacklight Extension Test Page</title></head>
+<body style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;">
+<h1>Blacklight Extension Test Page</h1>
+<p>This page contains hidden Unicode payloads for testing the Blacklight browser extension.</p>
+
+<h2>Test 1: Unicode Tags (ASCII Smuggling)</h2>
+<p>This sentence looks normal.&#917576;&#917577;&#917572;&#917572;&#917573;&#917582;&#917599;&#917587;&#917581;&#917589;&#917575;&#917575;&#917580;&#917573;&#917572;&#917599;&#917584;&#917569;&#917593;&#917580;&#917583;&#917569;&#917572; But it contains a hidden message encoded in Unicode Tag characters.</p>
+
+<h2>Test 2: Variation Selector Supplements</h2>
+<p>Another innocent looking paragraph.&#917827;&#917813;&#917811;&#917826;&#917813;&#917828; With VS17-256 encoded data.</p>
+
+<h2>Test 3: Zero-Width Binary Encoding</h2>
+<p>Clean text here.&#8203;&#8204;&#8203;&#8204;&#8203;&#8203;&#8204;&#8204; Binary data hidden via ZWSP/ZWNJ pairs.</p>
+
+<h2>Test 4: Mixed Directional Marks</h2>
+<p>Normal text&#8206;&#8207;&#8234;&#8235;&#8236; with directional formatting marks injected.</p>
+
+<h2>Test 5: Soft Hyphens (Fingerprinting)</h2>
+<p>Imp&#173;ort&#173;ant doc&#173;um&#173;ent with soft hyphens for text fingerprinting.</p>
+
+<h2>Expected Results</h2>
+<ul>
+<li>Test 1: Should detect ~22 Unicode Tag chars, decode to "HIDDEN_SMUGGLED_PAYLOAD"</li>
+<li>Test 2: Should detect VS supplement chars, decode to "SECRET"</li>
+<li>Test 3: Should detect 8 ZWSP/ZWNJ chars (binary sequence)</li>
+<li>Test 4: Should flag 5 LTR/RTL marks and embeddings</li>
+<li>Test 5: Should flag 4 soft hyphens</li>
+</ul>
+</body></html>
