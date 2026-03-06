@@ -4,9 +4,6 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    window.onerror = function (msg, url, line, col, error) {
-        document.body.innerHTML += `<div style="color:red; font-family:monospace; padding: 10px; background: black; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 9999;">ERROR: ${msg}<br/>Line: ${line}<br/>${error?.stack || ''}</div>`;
-    };
     const emptyState = document.getElementById('empty-state');
     const resultsContainer = document.getElementById('results-container');
     const pageUrl = document.getElementById('page-url');
@@ -428,46 +425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let sbUserOverride = false;
     let currentHighlightStyle = 'nimbus';
 
-    /** Resolve the full verbose name for a single character, matching the detection filter's format. */
-    function resolveCharName(char) {
-        const cp = char.codePointAt(0);
-        const codeStr = `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-
-        // 1. Primary invisible chars dict
-        if (typeof INVISIBLE_CHARS !== 'undefined' && INVISIBLE_CHARS[char]) {
-            return `${codeStr}  ${INVISIBLE_CHARS[char]}`;
-        }
-        // 2. Confusable spaces
-        if (typeof CONFUSABLE_SPACE_CHARS !== 'undefined' && CONFUSABLE_SPACE_CHARS[char]) {
-            return `${codeStr}  ${CONFUSABLE_SPACE_CHARS[char]}`;
-        }
-        // 3. Unicode Tags
-        if (typeof isUnicodeTag === 'function' && isUnicodeTag(cp)) {
-            const decoded = decodeUnicodeTag(cp);
-            return `${codeStr}  UNICODE TAG (ASCII: ${decoded})`;
-        }
-        // 4. Variation Selector Supplements (VS17-256)
-        if (typeof isVariationSelectorSupplement === 'function' && isVariationSelectorSupplement(cp)) {
-            const name = variationSelectorName(cp);
-            const lowByte = cp - VS_SUPPLEMENT_START;
-            const asciiStr = (lowByte >= 32 && lowByte <= 126) ? String.fromCharCode(lowByte) : `0x${lowByte.toString(16).padStart(2, '0')}`;
-            return `${codeStr}  ${name} (ASCII: ${asciiStr})`;
-        }
-        // 5. Control characters
-        if (typeof isControlChar === 'function' && isControlChar(char)) {
-            return `${codeStr}  ${controlCharName(char)}`;
-        }
-        // 6. Space separators
-        if (typeof isSpaceSeparator === 'function' && isSpaceSeparator(char)) {
-            return `${codeStr}  ${zsCharName(char)}`;
-        }
-        // 7. Soft hyphen
-        if (cp === 0x00AD) {
-            return `${codeStr}  SOFT HYPHEN`;
-        }
-        // Fallback
-        return codeStr;
-    }
+    // resolveCharName is now provided globally by unicode-chars.js
 
     function populateSbDropdowns(detections) {
         if (!sbChar0Select || !sbChar1Select || !detections) return;
@@ -526,17 +484,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /** Re-render detections locally using current sbConfig (no page rescan needed) */
-    function reRenderDetections() {
+    async function reRenderDetections() {
         if (!currentResults?.detections) return;
         const rendered = renderDetections(currentResults.detections) || { sneakyDecodedStrings: [] };
         renderTagRuns(currentResults.tagRunSummary, rendered.sneakyDecodedStrings || []);
         // Save sbConfig to settings without triggering rescan
-        chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
-            const s = resp?.settings || {};
-            s.sbConfig = sbConfig;
-            s.sbAutoThreshold = sbAutoThreshold ? parseInt(sbAutoThreshold.value, 10) || 50 : 50;
-            chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
-        });
+        const resp = await chrome.runtime.sendMessage({ action: 'getSettings' });
+        const s = resp?.settings || {};
+        s.sbConfig = sbConfig;
+        s.sbAutoThreshold = sbAutoThreshold ? parseInt(sbAutoThreshold.value, 10) || 50 : 50;
+        chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
     }
 
     // Set up change handlers for the dynamic payload decoder dropdowns
@@ -565,11 +522,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         reRenderDetections();
     });
 
-    // Utility: debounce
-    function debounce(fn, ms) {
-        let timer;
-        return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
-    }
+    // Utility: debounce (now imported from shared-ui.js)
 
     if (sbAutoThreshold) {
         sbAutoThreshold.addEventListener('input', debounce(() => {
@@ -628,7 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Save settings and trigger re-scan
-    function saveFilterSettings() {
+    async function saveFilterSettings() {
         const s = {
             autoScan: false, // Don't change autoScan from panel
             charFilters: charFilters,
@@ -649,11 +602,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         // Preserve autoScan from the loaded settings
-        chrome.runtime.sendMessage({ action: 'getSettings' }, (resp) => {
-            if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
-            chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
-            triggerRescan();
-        });
+        const resp = await chrome.runtime.sendMessage({ action: 'getSettings' });
+        if (resp?.settings?.autoScan !== undefined) s.autoScan = resp.settings.autoScan;
+        chrome.runtime.sendMessage({ action: 'saveSettings', settings: s });
+        triggerRescan();
         updateSeqPreview();
     }
 
@@ -745,14 +697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         download(rows.join('\n'), `ass-report-${Date.now()}.csv`, 'text/csv');
     });
 
-    // ─── Helpers ──────────────────────────────────────────────────────
-
-    function esc(str) {
-        if (!str) return '';
-        const d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
+    // esc function is now imported from shared-ui.js
 
     function csvEsc(str) {
         if (!str) return '';
