@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install AID – ASCII Smuggling Detector</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-hover: #1c2129;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --radius: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    /* Header */
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--red), var(--orange), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero .tagline {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .hero .version {
+      display: inline-block;
+      margin-top: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Install buttons */
+    .install-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 500px) {
+      .install-grid { grid-template-columns: 1fr; }
+    }
+
+    .install-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.15s ease;
+      cursor: pointer;
+      display: block;
+    }
+
+    .install-card:hover {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+      transform: translateY(-1px);
+    }
+
+    .install-card .browser {
+      font-size: 1.4rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .install-card .browser-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .install-card .browser-note {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+
+    .install-card.recommended {
+      border-color: var(--green);
+      position: relative;
+    }
+
+    .install-card.recommended::after {
+      content: 'Recommended';
+      position: absolute;
+      top: -8px;
+      right: 12px;
+      background: var(--green);
+      color: var(--bg);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    /* Steps */
+    .steps {
+      margin-top: 2rem;
+    }
+
+    .steps h2 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .step-content h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .step-content code {
+      background: var(--surface);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+
+    /* Privacy section */
+    .privacy {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .privacy h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .privacy-item {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      align-items: baseline;
+    }
+
+    .privacy-item .icon { flex-shrink: 0; }
+    .privacy-item .label { font-weight: 600; font-size: 0.9rem; }
+    .privacy-item .desc { color: var(--text-muted); font-size: 0.85rem; }
+
+    /* Severity legend */
+    .severity {
+      margin-bottom: 2.5rem;
+    }
+
+    .severity h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .severity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 500px) {
+      .severity-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .severity-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .severity-card .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-bottom: 0.25rem;
+    }
+
+    .severity-card .dot.critical { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .severity-card .dot.high { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+    .severity-card .dot.medium { background: #e3b341; }
+    .severity-card .dot.info { background: var(--blue); }
+
+    .severity-card .level { font-weight: 600; font-size: 0.85rem; }
+    .severity-card .threshold { color: var(--text-muted); font-size: 0.75rem; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem 0;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover { text-decoration: underline; }
+
+    /* Tab switcher */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.6rem;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: none;
+      transition: all 0.15s ease;
+    }
+
+    .tab:not(:last-child) { border-right: 1px solid var(--border); }
+    .tab:hover { background: var(--surface-hover); color: var(--text); }
+    .tab.active { background: var(--accent); color: var(--bg); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Hero -->
+    <div class="hero">
+      <h1>🔍 <span>AID</span></h1>
+      <p class="tagline">
+        Detect invisible Unicode characters used in prompt injection,
+        text steganography, and ASCII smuggling attacks.
+      </p>
+      <span class="version">v1.0.0 · MIT License · 100% Local</span>
+    </div>
+
+    <!-- Privacy -->
+    <div class="privacy">
+      <h2>🔒 Privacy</h2>
+      <div class="privacy-item">
+        <span class="icon">✅</span>
+        <div>
+          <div class="label">Runs entirely on your device</div>
+          <div class="desc">No data collected, transmitted, or stored externally. All scanning happens in your browser's local memory.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <span class="icon">✅</span>
+        <div>
+          <div class="label">No network requests</div>
+          <div class="desc">Zero API calls. Zero telemetry. Zero analytics. The extension has no server.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <span class="icon">✅</span>
+        <div>
+          <div class="label">Minimal permissions</div>
+          <div class="desc"><code>activeTab</code> + <code>storage</code> + <code>scripting</code>. Only accesses the page you explicitly scan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Install -->
+    <div class="install-section">
+      <div class="install-grid">
+        <div class="install-card recommended" onclick="showTab('chrome')">
+          <div class="browser">🌐</div>
+          <div class="browser-name">Chrome / Edge / Brave</div>
+          <div class="browser-note">Manifest V3 · Side panel support</div>
+        </div>
+        <div class="install-card" onclick="showTab('firefox')">
+          <div class="browser">🦊</div>
+          <div class="browser-name">Firefox</div>
+          <div class="browser-note">Sidebar support · Gecko 128+</div>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="tab-bar">
+          <button class="tab active" onclick="showTab('chrome')" id="tab-chrome">Chrome / Edge / Brave</button>
+          <button class="tab" onclick="showTab('firefox')" id="tab-firefox">Firefox</button>
+          <button class="tab" onclick="showTab('source')" id="tab-source">From Source</button>
+        </div>
+
+        <div class="tab-content active" id="content-chrome">
+          <h2>Install on Chrome, Edge, or Brave</h2>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Download the extension</h3>
+              <p>Get <code>aid-chrome.zip</code> from the <a href="https://github.com/KillAllTheHippies/aid/releases" style="color: var(--accent)">latest release</a> and unzip it.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Open Extensions page</h3>
+              <p>Navigate to <code>chrome://extensions</code> (or <code>edge://extensions</code> / <code>brave://extensions</code>)</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Enable Developer Mode</h3>
+              <p>Toggle the switch in the top-right corner.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <h3>Load the extension</h3>
+              <p>Click <strong>Load unpacked</strong> and select the unzipped <code>aid-chrome</code> folder.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <h3>Pin it</h3>
+              <p>Click the puzzle icon in the toolbar and pin AID for quick access.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="content-firefox">
+          <h2>Install on Firefox</h2>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Download the extension</h3>
+              <p>Get <code>aid-firefox.xpi</code> from the <a href="https://github.com/KillAllTheHippies/aid/releases" style="color: var(--accent)">latest release</a>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Install the add-on</h3>
+              <p>Open <code>about:addons</code>, click the gear icon, select <strong>Install Add-on From File</strong>, and choose the <code>.xpi</code> file.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>That's it</h3>
+              <p>The AID icon appears in your toolbar. Click it to scan any page.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="content-source">
+          <h2>Build from source</h2>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Clone the repository</h3>
+              <p><code>git clone https://github.com/KillAllTheHippies/aid.git && cd aid && git checkout aid-extension</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Build</h3>
+              <p>
+                Bash: <code>cd aid-extension && ./build.sh all</code><br>
+                PowerShell: <code>cd aid-extension; .\build.ps1</code>
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Load the built extension</h3>
+              <p>Follow the Chrome or Firefox steps above, pointing to <code>aid-extension/dist/chrome/</code> or installing the <code>.xpi</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity Legend -->
+    <div class="severity">
+      <h2>Severity Levels</h2>
+      <div class="severity-grid">
+        <div class="severity-card">
+          <div class="dot critical"></div>
+          <div class="level">Critical</div>
+          <div class="threshold">Run ≥ 40 chars</div>
+        </div>
+        <div class="severity-card">
+          <div class="dot high"></div>
+          <div class="level">High</div>
+          <div class="threshold">Run ≥ 10 or 100+ sparse</div>
+        </div>
+        <div class="severity-card">
+          <div class="dot medium"></div>
+          <div class="level">Medium</div>
+          <div class="threshold">10–100 sparse</div>
+        </div>
+        <div class="severity-card">
+          <div class="dot info"></div>
+          <div class="level">Info</div>
+          <div class="threshold">&lt; 10 total</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        Based on <a href="https://github.com/wunderwuzzi23/aid">wunderwuzzi23/aid</a> ·
+        Browser extension by <a href="https://github.com/KillAllTheHippies/aid/tree/aid-extension">KillAllTheHippies</a>
+      </p>
+      <p style="margin-top: 0.5rem;">
+        <a href="https://embracethered.com/blog/posts/2026/scary-agent-skills/">Why this matters</a> ·
+        <a href="https://embracethered.com/blog/ascii-smuggler.html">ASCII Smuggler</a> ·
+        <a href="https://github.com/KillAllTheHippies/aid">Source Code</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      document.getElementById('content-' + name).classList.add('active');
+    }
+  </script>
+</body>
+</html>
