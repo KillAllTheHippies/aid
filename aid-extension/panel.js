@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (entries.length) {
             categorySection.style.display = 'block';
             categoryGrid.innerHTML = entries.map(([name, count]) =>
-                `<div class="category-row"><span class="cat-name">${esc(name)}</span><span class="cat-count">${count}</span></div>`
+                `<div class="category-row"><span class="category-name">${esc(name)}</span><span class="category-count">${count}</span></div>`
             ).join('');
         } else {
             categorySection.style.display = 'none';

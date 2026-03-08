@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             statusBadge.className = `status-badge ${suspicion.suspicionLevel}`;
             statusEmoji.textContent = EMOJI[suspicion.suspicionLevel] || '⚪';
-            statusText.textContent = `${totalDetections} detection${totalDetections !== 1 ? 's' : ''}`;
+            statusText.textContent = `${totalDetections} Total Code Points`;
             statusDetail.textContent = suspicion.reason;
             expandAllBtn.classList.remove('hidden');
         }
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const s = results.suspicion;
         statusBadge.className = `status-badge ${s.suspicionLevel}`;
         statusEmoji.textContent = EMOJI[s.suspicionLevel] || '⚪';
-        statusText.textContent = `${s.totalCodePoints} detection${s.totalCodePoints !== 1 ? 's' : ''}`;
+        statusText.textContent = `${s.totalCodePoints} Total Code Points`;
         statusDetail.textContent = s.reason;
         updateSettingsAlert();
 
