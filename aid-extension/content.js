@@ -52,7 +52,7 @@
         // The visual profile dropdown ONLY affects the popup/panel (via shared-ui.js).
         // applyPageTheme() injects CSS into the host webpage ONLY for the auto-calming
         // Hitchhiker effect — never for regular visual profile changes.
-        const ahThreshold = settings.autoHitchhikerThreshold ?? 8;
+        const ahThreshold = settings.autoHitchhikerThreshold ?? 800;
         const isHitchhikerActive = settings.autoHitchhiker && pageSuspicion.totalCodePoints >= ahThreshold;
         applyPageTheme(isHitchhikerActive ? 'hitchhiker' : null);
         window.__assActiveTheme = isHitchhikerActive ? 'hitchhiker' : (settings.visualProfile || 'default');

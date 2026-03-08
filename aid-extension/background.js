@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS = {
     visualProfile: 'default',
     highlightStyle: 'military',
     autoHitchhiker: false,
-    autoHitchhikerThreshold: 8,
+    autoHitchhikerThreshold: 800,
 };
 
 const BADGE_COLORS = {

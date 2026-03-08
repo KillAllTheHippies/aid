@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fuzzySearch: panelOptFuzzySearch.checked,
             visualProfile: panelVisualProfile ? panelVisualProfile.value : 'default',
             autoHitchhiker: panelAutoHitchhiker ? panelAutoHitchhiker.checked : false,
-            autoHitchhikerThreshold: panelAhThreshold ? Math.max(1, parseInt(panelAhThreshold.value, 10) || 8) : 8,
+            autoHitchhikerThreshold: panelAhThreshold ? Math.max(1, parseInt(panelAhThreshold.value, 10) || 800) : 800,
             detectNbsp: panelOptNbsp.checked,
             detectConfusableSpaces: panelOptConfusable.checked,
             detectControlChars: panelOptCc.checked,
@@ -640,7 +640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         panelOptFuzzySearch.checked = settings.fuzzySearch ?? true;
         if (panelVisualProfile) panelVisualProfile.value = settings.visualProfile || 'default';
         if (panelAutoHitchhiker) panelAutoHitchhiker.checked = settings.autoHitchhiker || false;
-        if (panelAhThreshold) panelAhThreshold.value = settings.autoHitchhikerThreshold ?? 8;
+        if (panelAhThreshold) panelAhThreshold.value = settings.autoHitchhikerThreshold ?? 800;
         if (panelHighlightStyle) panelHighlightStyle.value = settings.highlightStyle || 'nimbus';
         currentHighlightStyle = settings.highlightStyle || 'nimbus';
         panelOptConfusable.checked = settings.detectConfusableSpaces || false;

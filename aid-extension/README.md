@@ -61,7 +61,7 @@ Full-fidelity port of the [`aid`](https://github.com/wunderwuzzi23/aid) Python C
 | Detect control chars (Cc) | Off | Unicode Cc category (excludes TAB/LF/CR) |
 | Detect space separators (Zs) | Off | Unicode Zs category (excludes ASCII space) |
 | Auto-Hitchhiker | Off | Automatically switch to the HHG theme on suspicious pages |
-| HHG Threshold | 8 | Total code points required to trigger the guide theme |
+| HHG Threshold | 800 | Total code points required to trigger the guide theme |
 
 ## Suspicion Levels
 
